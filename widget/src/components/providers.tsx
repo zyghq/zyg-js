@@ -50,8 +50,9 @@ export const ReactQueryClientProvider = ({
 async function initWidgetRequest(
   payload: SdkInitResponse
 ): Promise<InitWidgetResponse> {
+  console.log("*************** The Payload from embed.js", payload);
   const { widgetId, sessionId, ...rest } = payload;
-  const { email, phone, externalId, customerHash } = rest;
+  const { email, phone, externalId, customerHash, traits = null } = rest;
   // give what the API needs.
   const body = {
     sessionId,
@@ -59,6 +60,7 @@ async function initWidgetRequest(
     customerEmail: email,
     customerPhone: phone,
     customerHash,
+    traits,
   };
 
   console.log("************** widgetId", widgetId);
@@ -174,7 +176,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error("error procesing evt message:", err);
+        console.error("error processing evt message:", err);
       } finally {
         console.log("*********** ifc:onMessageHandler ***********");
       }

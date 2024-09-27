@@ -524,6 +524,8 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           traits: traits,
         };
 
+        console.log("customer from embed.js --------------------", customer);
+
         const title = initConfig.title || DEFAULT_LAYOUT.title;
         const ctaSearchButtonText =
           initConfig.ctaSearchButtonText || DEFAULT_LAYOUT.ctaSearchButtonText;
