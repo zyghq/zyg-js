@@ -94,7 +94,7 @@ function Home() {
     return (
       <div className="flex flex-col gap-2">
         {links.map((feed) => (
-          <Link
+          <a
             target="_blank"
             href={feed.href}
             key={feed.id}
@@ -112,7 +112,7 @@ function Home() {
             <div className="line-clamp-2 text-muted-foreground text-xs">
               {feed.previewText}
             </div>
-          </Link>
+          </a>
         ))}
       </div>
     );
@@ -243,7 +243,7 @@ function Home() {
               className="w-full text-muted-foreground flex font-normal items-center"
               asChild
             >
-              <Link href="/search">
+              <Link to="/search">
                 <MagnifyingGlassIcon className="h-4 w-4 mr-1" />
                 {widgetLayout.ctaSearchButtonText}
               </Link>
