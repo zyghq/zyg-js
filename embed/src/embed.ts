@@ -77,10 +77,6 @@ interface InitConfig {
 
 // Represents the SDK instance and API interface.
 interface ZygSDKInstance {
-  widgetId: string | null; // PK
-  sessionId: string | null;
-  customer: Customer; // customer
-  layout: WidgetLayout; // widget layout
   _eventTarget: EventTarget;
   _triggerEvent: (eventName: string, data: any) => void;
   on: (eventName: string, callback: EventListenerOrEventListenerObject) => void;
@@ -89,7 +85,7 @@ interface ZygSDKInstance {
     callback: EventListenerOrEventListenerObject
   ) => void;
   onMessageHandler: (evt: MessageEvent) => void;
-  init: (config: InitConfig) => any;
+  init: () => any;
 }
 
 class SetLocalStorageError extends Error {
@@ -200,7 +196,6 @@ export function initZygWidgetScript(initConfig: InitConfig) {
   if (IS_SERVER) {
     return;
   }
-
   (function () {
     var config: WidgetConfig = DEFAULT_CONFIG;
     var isHidden = !0;
@@ -438,29 +433,30 @@ export function initZygWidgetScript(initConfig: InitConfig) {
       });
     }
 
-    const zyg: ZygSDKInstance = {
-      widgetId: null,
-      sessionId: null,
-      customer: DEFAULT_CUSTOMER_PROPS,
-      layout: DEFAULT_LAYOUT,
+    // state
+    // let widgetId: string;
+    // let sessionId: string;
+    // let customer: Customer;
+    // let layout: WidgetLayout;
+
+    var widgetId: string;
+    var sessionId: string;
+    var customer: Customer;
+    var layout: WidgetLayout;
+
+    const zyg = (initConfig: InitConfig): ZygSDKInstance => ({
       _eventTarget: new EventTarget(),
-      _triggerEvent: function (eventName: string, data: any) {
+      _triggerEvent(eventName: string, data: any) {
         const event = new CustomEvent(eventName, { detail: data });
         this._eventTarget.dispatchEvent(event);
       },
-      on: function (
-        eventName: string,
-        callback: EventListenerOrEventListenerObject
-      ) {
+      on(eventName: string, callback: EventListenerOrEventListenerObject) {
         this._eventTarget.addEventListener(eventName, callback);
       },
-      off: function (
-        eventName: string,
-        callback: EventListenerOrEventListenerObject
-      ) {
+      off(eventName: string, callback: EventListenerOrEventListenerObject) {
         this._eventTarget.removeEventListener(eventName, callback);
       },
-      onMessageHandler: function (evt: MessageEvent) {
+      onMessageHandler(evt: MessageEvent) {
         logger("onMessageHandler...");
         logger("evt origin:", evt.origin);
         logger("evt source", evt.source);
@@ -474,11 +470,13 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           this._triggerEvent("error", evt.data); // trigger error event.
         }
         if (evt.data === "ifc:ready") {
-          handleWidgetLayoutPayload({ ...this.layout }); // pass widget layout on iframe ready.
+          console.log("got ifc:ready.....");
+          console.log("this layout ....", layout);
+          handleWidgetLayoutPayload({ ...layout }); // pass widget layout on iframe ready.
           handleCustomerPayload({
-            widgetId: this.widgetId,
-            sessionId: this.sessionId,
-            ...this.customer,
+            widgetId: widgetId,
+            sessionId: sessionId,
+            ...customer,
           }); // pass customer on iframe ready
         }
         if (evt.data === "ifc:ack") {
@@ -486,23 +484,21 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           this._triggerEvent("ready", null); // trigger ready event.
         }
       },
-      init: function (initConfig: InitConfig) {
+      init() {
         if (typeof initConfig !== "object" || !initConfig.widgetId) {
           throw new Error("Invalid configuration. widgetId is required.");
         }
 
-        this.widgetId = initConfig.widgetId; // widgetId is required and mandatory.
+        // set widgetId
+        widgetId = initConfig.widgetId;
 
-        // customer details as provided in initConfig
-        const { customer = {} } = initConfig;
+        const externalId = initConfig.customer?.externalId || null;
+        const email = initConfig.customer?.email || null;
+        const phone = initConfig.customer?.phone || null;
 
-        const externalId = customer?.externalId || null;
-        const email = customer?.email || null;
-        const phone = customer?.phone || null;
-
-        const customerHash = customer?.customerHash || null;
-        const isVerified = customer?.isVerified || false;
-        const traits = customer?.traits || {};
+        const customerHash = initConfig.customer?.customerHash || null;
+        const isVerified = initConfig.customer?.isVerified || false;
+        const traits = initConfig.customer?.traits || {};
 
         const hasCustomerIdentifier = !!externalId || !!email || !!phone;
 
@@ -517,13 +513,15 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           );
         }
 
-        this.customer = {
+        // set customer
+        customer = {
+          ...DEFAULT_CUSTOMER_PROPS,
           externalId,
           email,
           phone,
-          customerHash,
-          isVerified,
-          traits,
+          customerHash: customerHash,
+          isVerified: isVerified,
+          traits: traits,
         };
 
         const title = initConfig.title || DEFAULT_LAYOUT.title;
@@ -546,7 +544,8 @@ export function initZygWidgetScript(initConfig: InitConfig) {
             }))) ||
           [];
 
-        this.layout = {
+        // set layout
+        layout = {
           title,
           ctaSearchButtonText,
           ctaMessageButtonText,
@@ -555,7 +554,7 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           homeLinks: homeLinksFormatted,
         };
 
-        fetchWidgetConfig(this.widgetId)
+        fetchWidgetConfig(widgetId)
           .then((c) => {
             logger("fetched widget config", c);
             const merged = { ...config, ...c };
@@ -566,51 +565,54 @@ export function initZygWidgetScript(initConfig: InitConfig) {
             // Check if the `customerHash` is provided.
             // If so, we don't need to generate a sessionId.
             // We will use the customerHash to identify the customer.
-            if (this.customer.customerHash) {
+            if (customer.customerHash) {
               return Promise.resolve();
             }
 
-            if (!this.widgetId) {
+            if (!widgetId) {
               throw new Error("widgetId is not configured!");
             }
 
             // check if existing sessionId is already stored.
-            const [existingSession, getErr] = getLocalStorage(this.widgetId);
+            const [existingSession, getErr] = getLocalStorage(widgetId);
             if (getErr) {
               console.error("Error checking widget session from store", getErr);
             }
             // if sessionId is already stored, use it.
             if (existingSession) {
-              this.sessionId = existingSession;
+              sessionId = existingSession;
               return Promise.resolve();
             }
             // generate a new sessionId, works if there was also an error
             // when trying to get the sessionId from localStorage.
-            const sessionId = generateUUID();
-            const [isSet, setErr] = setLocalStorage(this.widgetId, sessionId);
+            const newSessionId = generateUUID();
+            const [isSet, setErr] = setLocalStorage(widgetId, newSessionId);
             if (setErr) {
               console.error("Error storing widget session", setErr);
               return Promise.reject(setErr);
             }
             if (isSet) {
-              this.sessionId = sessionId;
+              sessionId = newSessionId;
             }
             return Promise.resolve();
           })
           .then(() => {
             logger("create iframe widget...");
             createZygWidget(config),
-              window.addEventListener("message", this.onMessageHandler),
+              window.addEventListener(
+                "message",
+                this.onMessageHandler.bind(this)
+              ),
               window.addEventListener("resize", handlePageWidthChange);
           })
           .catch((err) => {
             console.error("Error configuring widget", err);
           });
       },
-    };
-    // boot the embed script
-    zyg.init(initConfig);
-    window["Zyg"] = zyg;
+    });
+    const z = zyg(initConfig);
+    z.init();
+    window["Zyg"] = z;
     // dispatch event to notify that the sdk is loaded,
     // globally accessible
     window.dispatchEvent(new Event("zyg:loaded"));

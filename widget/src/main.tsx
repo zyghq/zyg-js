@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
+import { CustomerProvider } from "@/components/providers";
 
 import "./index.css";
 
@@ -34,7 +35,9 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <CustomerProvider>
+        <RouterProvider router={router} />
+      </CustomerProvider>
     </QueryClientProvider>
   );
 }
