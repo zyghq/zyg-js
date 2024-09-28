@@ -9,11 +9,11 @@ import {
 } from "@tanstack/react-query";
 import {
   CustomerRefreshed,
-  widgetCustomerAuthSchema,
+  authenticatedCustomerAuthSchema,
   CustomerContext,
   initWidgetResponseSchema,
   InitWidgetResponse,
-  WidgetCustomerAuth,
+  AuthenticatedCustomer,
 } from "@/lib/customer";
 import { SdkInitResponse, WidgetLayout } from "@/lib/widget";
 import { useQuery } from "@tanstack/react-query";
@@ -92,7 +92,7 @@ async function initWidgetRequest(
 }
 
 export function CustomerProvider({ children }: { children: React.ReactNode }) {
-  const [customer, setCustomer] = React.useState<WidgetCustomerAuth | null>(
+  const [customer, setCustomer] = React.useState<AuthenticatedCustomer | null>(
     null
   );
   const [widgetLayout, setWidgetLayout] =
@@ -123,7 +123,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
       };
       try {
         const parsedCustomerContext =
-          widgetCustomerAuthSchema.parse(customerContext);
+          authenticatedCustomerAuthSchema.parse(customerContext);
         return parsedCustomerContext;
       } catch (err) {
         if (err instanceof z.ZodError) {

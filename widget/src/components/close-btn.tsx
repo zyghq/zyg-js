@@ -1,9 +1,7 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Cross1Icon } from "@radix-ui/react-icons";
 
-export default function CloseButton() {
+export function CloseButton() {
   const handleClose = () => {
     window.parent.postMessage("close", "*");
   };

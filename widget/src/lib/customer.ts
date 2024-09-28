@@ -50,14 +50,18 @@ export type InitWidgetResponse = z.infer<typeof initWidgetResponseSchema>;
 
 // Widget customer auth schema required for customer widget context.
 // Has widget config, init widget response and customer details.
-const widgetCustomerAuthSchemaObj = {
+const authenticatedCustomerSchemaObj = {
   ...widgetConfigSchemaObj,
   ...initWidgetResponseSchemaObj,
 };
 
-export const widgetCustomerAuthSchema = z.object(widgetCustomerAuthSchemaObj);
+export const authenticatedCustomerAuthSchema = z.object(
+  authenticatedCustomerSchemaObj
+);
 
-export type WidgetCustomerAuth = z.infer<typeof widgetCustomerAuthSchema>;
+export type AuthenticatedCustomer = z.infer<
+  typeof authenticatedCustomerAuthSchema
+>;
 
 export interface CustomerRefreshed {
   externalId: string | null;
@@ -73,7 +77,7 @@ export interface CustomerRefreshed {
 }
 
 export interface CustomerContext {
-  customer: WidgetCustomerAuth | null;
+  customer: AuthenticatedCustomer | null;
   widgetLayout: WidgetLayout;
   isLoading: boolean;
   hasError: boolean;
