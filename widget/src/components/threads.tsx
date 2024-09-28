@@ -14,7 +14,8 @@ function ThreadItem({ thread }: { thread: ThreadResponseItem }) {
 
   return (
     <Link
-      href={`/threads/${thread.threadId}/`}
+      to="/threads/$threadId"
+      params={{ threadId: thread.threadId }}
       key={thread.threadId}
       className={cn(
         "flex flex-col items-start gap-2 rounded-lg border px-3 py-3 text-left text-sm transition-all hover:bg-accent"
@@ -41,9 +42,6 @@ function ThreadItem({ thread }: { thread: ThreadResponseItem }) {
             <div className="font-medium">{`${
               hasMember ? memberName : "You"
             }`}</div>
-            {!thread.read && (
-              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
-            )}
           </div>
           <div
             className={cn(

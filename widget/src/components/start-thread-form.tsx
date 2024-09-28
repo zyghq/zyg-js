@@ -1,5 +1,3 @@
-"use client";
-
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { SendHorizonalIcon } from "lucide-react";
@@ -13,6 +11,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
+import { createThreadAPI } from "@/api";
+import { NavigateFn } from "@tanstack/react-router";
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -40,9 +40,11 @@ function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
 export function StartThreadForm({
   widgetId,
   jwt,
+  navigate,
 }: {
   widgetId: string;
   jwt: string;
+  navigate: NavigateFn;
 }) {
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -52,7 +54,7 @@ export function StartThreadForm({
   });
 
   const { formState } = form;
-  const { isSubmitting, errors, isSubmitSuccessful } = formState;
+  const { isSubmitting, errors } = formState;
 
   const onEnterPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -65,31 +67,30 @@ export function StartThreadForm({
   };
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    console.log("onSubmit", values);
-    console.log("widgetId", widgetId);
-    console.log("jwt", jwt);
-    // const { message } = values;
-    // const response = await createThreadAction(widgetId, jwt, {
-    //   message,
-    // });
-    // const { error, data } = response;
-    // if (error) {
-    //   const { message } = error;
-    //   form.setError("root.serverError", {
-    //     message: message || "Please try again later.",
-    //   });
-    //   return;
-    // }
-    // if (data) {
-    //   const { threadId } = data;
-    //   return router.push(`/threads/${threadId}`);
-    // }
-    // form.setError("root.serverError", {
-    //   message: "Please try again later.",
-    // });
+    const { message } = values;
+    const response = await createThreadAPI(widgetId, jwt, {
+      message,
+    });
+    const { error, data } = response;
+    if (error) {
+      const { message } = error;
+      form.setError("root.serverError", {
+        message: message || "Please try again later.",
+      });
+      return;
+    }
+    if (data) {
+      const { threadId } = data;
+      console.log("******** should be navigating now.....");
+      await navigate({ to: `/threads/$threadId`, params: { threadId } });
+    } else {
+      form.setError("root.serverError", {
+        message: "Something went wrong. Please try again later.",
+      });
+    }
   };
 
-  const isDisabled = isSubmitting || isSubmitSuccessful;
+  const isDisabled = isSubmitting;
 
   return (
     <Form {...form}>
@@ -114,14 +115,16 @@ export function StartThreadForm({
                   onKeyDown={onEnterPress}
                 />
               </FormControl>
-              {errors?.root?.serverError && (
-                <FormMessage>{errors?.root?.serverError?.message}</FormMessage>
-              )}
             </FormItem>
           )}
         />
         <SubmitButton isDisabled={isDisabled} />
       </form>
+      {errors?.root?.serverError && (
+        <FormMessage className="text-xs mt-1">
+          {errors?.root?.serverError?.message}
+        </FormMessage>
+      )}
     </Form>
   );
 }

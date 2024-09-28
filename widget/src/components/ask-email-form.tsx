@@ -12,9 +12,9 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { updateEmailAction } from "@/app/threads/_actions";
-import { CustomerRefreshable } from "@/lib/customer";
+import { CustomerRefreshed } from "@/lib/customer";
 import { customerSchema } from "@/lib/customer";
+import { updateEmailAPI } from "@/api";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -37,14 +37,14 @@ function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   );
 }
 
-export default function AskEmailForm({
+export function AskEmailForm({
   widgetId,
   jwt,
   setUpdates,
 }: {
   widgetId: string;
   jwt: string;
-  setUpdates: (updates: CustomerRefreshable) => void;
+  setUpdates: (updates: CustomerRefreshed) => void;
 }) {
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -58,10 +58,9 @@ export default function AskEmailForm({
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const { email } = values;
-    const response = await updateEmailAction(widgetId, jwt, {
+    const { error, data } = await updateEmailAPI(widgetId, jwt, {
       email,
     });
-    const { error, data } = response;
     if (error) {
       const { message } = error;
       form.setError("root.serverError", {

@@ -11,17 +11,12 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
-import { Route as ThreadsImport } from './routes/threads'
 import { Route as SearchImport } from './routes/search'
 import { Route as IndexImport } from './routes/index'
-import { Route as ThreadsThreadIdImport } from './routes/threads.$threadId'
+import { Route as ThreadsIndexImport } from './routes/threads/index'
+import { Route as ThreadsThreadIdImport } from './routes/threads/$threadId'
 
 // Create/Update Routes
-
-const ThreadsRoute = ThreadsImport.update({
-  path: '/threads',
-  getParentRoute: () => rootRoute,
-} as any)
 
 const SearchRoute = SearchImport.update({
   path: '/search',
@@ -33,9 +28,14 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const ThreadsIndexRoute = ThreadsIndexImport.update({
+  path: '/threads/',
+  getParentRoute: () => rootRoute,
+} as any)
+
 const ThreadsThreadIdRoute = ThreadsThreadIdImport.update({
-  path: '/$threadId',
-  getParentRoute: () => ThreadsRoute,
+  path: '/threads/$threadId',
+  getParentRoute: () => rootRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
@@ -56,77 +56,68 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchImport
       parentRoute: typeof rootRoute
     }
-    '/threads': {
-      id: '/threads'
-      path: '/threads'
-      fullPath: '/threads'
-      preLoaderRoute: typeof ThreadsImport
-      parentRoute: typeof rootRoute
-    }
     '/threads/$threadId': {
       id: '/threads/$threadId'
-      path: '/$threadId'
+      path: '/threads/$threadId'
       fullPath: '/threads/$threadId'
       preLoaderRoute: typeof ThreadsThreadIdImport
-      parentRoute: typeof ThreadsImport
+      parentRoute: typeof rootRoute
+    }
+    '/threads/': {
+      id: '/threads/'
+      path: '/threads'
+      fullPath: '/threads'
+      preLoaderRoute: typeof ThreadsIndexImport
+      parentRoute: typeof rootRoute
     }
   }
 }
 
 // Create and export the route tree
 
-interface ThreadsRouteChildren {
-  ThreadsThreadIdRoute: typeof ThreadsThreadIdRoute
-}
-
-const ThreadsRouteChildren: ThreadsRouteChildren = {
-  ThreadsThreadIdRoute: ThreadsThreadIdRoute,
-}
-
-const ThreadsRouteWithChildren =
-  ThreadsRoute._addFileChildren(ThreadsRouteChildren)
-
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
-  '/threads': typeof ThreadsRouteWithChildren
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads': typeof ThreadsIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
-  '/threads': typeof ThreadsRouteWithChildren
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads': typeof ThreadsIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
-  '/threads': typeof ThreadsRouteWithChildren
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads/': typeof ThreadsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/search' | '/threads' | '/threads/$threadId'
+  fullPaths: '/' | '/search' | '/threads/$threadId' | '/threads'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/search' | '/threads' | '/threads/$threadId'
-  id: '__root__' | '/' | '/search' | '/threads' | '/threads/$threadId'
+  to: '/' | '/search' | '/threads/$threadId' | '/threads'
+  id: '__root__' | '/' | '/search' | '/threads/$threadId' | '/threads/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SearchRoute: typeof SearchRoute
-  ThreadsRoute: typeof ThreadsRouteWithChildren
+  ThreadsThreadIdRoute: typeof ThreadsThreadIdRoute
+  ThreadsIndexRoute: typeof ThreadsIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SearchRoute: SearchRoute,
-  ThreadsRoute: ThreadsRouteWithChildren,
+  ThreadsThreadIdRoute: ThreadsThreadIdRoute,
+  ThreadsIndexRoute: ThreadsIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -143,7 +134,8 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/search",
-        "/threads"
+        "/threads/$threadId",
+        "/threads/"
       ]
     },
     "/": {
@@ -152,15 +144,11 @@ export const routeTree = rootRoute
     "/search": {
       "filePath": "search.tsx"
     },
-    "/threads": {
-      "filePath": "threads.tsx",
-      "children": [
-        "/threads/$threadId"
-      ]
-    },
     "/threads/$threadId": {
-      "filePath": "threads.$threadId.tsx",
-      "parent": "/threads"
+      "filePath": "threads/$threadId.tsx"
+    },
+    "/threads/": {
+      "filePath": "threads/index.tsx"
     }
   }
 }

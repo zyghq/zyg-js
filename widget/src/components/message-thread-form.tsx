@@ -14,7 +14,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { sendThreadMessageAction } from "@/app/threads/_actions";
+import { sendThreadMessageAPI } from "@/api";
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -41,7 +41,7 @@ function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   );
 }
 
-export default function MessageThreadForm({
+export function MessageThreadForm({
   disabled,
   widgetId,
   threadId,
@@ -76,10 +76,14 @@ export default function MessageThreadForm({
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const { message } = values;
-    const response = await sendThreadMessageAction(widgetId, threadId, jwt, {
+    console.log("message", message);
+    console.log("widgetId", widgetId);
+    console.log("threadId", threadId);
+    console.log("jwt", jwt);
+    console.log("refetch", refetch);
+    const { error } = await sendThreadMessageAPI(widgetId, threadId, jwt, {
       message,
     });
-    const { error } = response;
     if (error) {
       const { message } = error;
       form.setError("root.serverError", {
