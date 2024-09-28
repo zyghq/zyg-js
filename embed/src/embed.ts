@@ -179,7 +179,7 @@ const DEFAULT_CONFIG = {
 
 const DEFAULT_LAYOUT = {
   title: "Hey! How can we help?",
-  ctaSearchButtonText: "Search for articles",
+  ctaSearchButtonText: "Search for articles, help docs and more...",
   ctaMessageButtonText: "Send us a message",
   tabs: ["home", "conversations"],
   defaultTab: "home",

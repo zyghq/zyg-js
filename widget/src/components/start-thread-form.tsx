@@ -13,8 +13,6 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { z } from "zod";
-import { useRouter } from "next/navigation";
-import { createThreadAction } from "@/app/threads/_actions";
 
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
@@ -39,14 +37,13 @@ function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   );
 }
 
-export default function StartThreadForm({
+export function StartThreadForm({
   widgetId,
   jwt,
 }: {
   widgetId: string;
   jwt: string;
 }) {
-  const router = useRouter();
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -68,25 +65,28 @@ export default function StartThreadForm({
   };
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    const { message } = values;
-    const response = await createThreadAction(widgetId, jwt, {
-      message,
-    });
-    const { error, data } = response;
-    if (error) {
-      const { message } = error;
-      form.setError("root.serverError", {
-        message: message || "Please try again later.",
-      });
-      return;
-    }
-    if (data) {
-      const { threadId } = data;
-      return router.push(`/threads/${threadId}`);
-    }
-    form.setError("root.serverError", {
-      message: "Please try again later.",
-    });
+    console.log("onSubmit", values);
+    console.log("widgetId", widgetId);
+    console.log("jwt", jwt);
+    // const { message } = values;
+    // const response = await createThreadAction(widgetId, jwt, {
+    //   message,
+    // });
+    // const { error, data } = response;
+    // if (error) {
+    //   const { message } = error;
+    //   form.setError("root.serverError", {
+    //     message: message || "Please try again later.",
+    //   });
+    //   return;
+    // }
+    // if (data) {
+    //   const { threadId } = data;
+    //   return router.push(`/threads/${threadId}`);
+    // }
+    // form.setError("root.serverError", {
+    //   message: "Please try again later.",
+    // });
   };
 
   const isDisabled = isSubmitting || isSubmitSuccessful;

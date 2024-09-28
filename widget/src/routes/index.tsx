@@ -75,10 +75,12 @@ function Home() {
         <Tabs defaultValue={defaultTab} className="">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="home">Home</TabsTrigger>
-            <TabsTrigger value="threads">Conversations</TabsTrigger>
+            <TabsTrigger value="conversations">Conversations</TabsTrigger>
           </TabsList>
           <TabsContent value="home">{renderHomeLinks(homeLinks)}</TabsContent>
-          <TabsContent value="threads">{renderThreads(threads)}</TabsContent>
+          <TabsContent value="conversations">
+            {renderThreads(threads)}
+          </TabsContent>
         </Tabs>
       );
     }

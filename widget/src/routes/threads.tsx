@@ -2,6 +2,7 @@ import { useCustomer } from "@/lib/customer";
 import { createFileRoute } from "@tanstack/react-router";
 import { HomeButton } from "@/components/home-btn";
 import { CloseButton } from "@/components/close-btn";
+import { StartThreadForm } from "@/components/start-thread-form";
 
 export const Route = createFileRoute("/threads")({
   component: NewThread,
@@ -80,7 +81,9 @@ function NewThread() {
           </div>
         </div>
         <div className="fixed bottom-0 left-0 flex w-full flex-col bg-white">
-          <div className="flex flex-col px-4 pt-4">...</div>
+          <div className="flex flex-col px-4 pt-4">
+            <StartThreadForm widgetId={widgetId} jwt={jwt} />
+          </div>
           <div className="w-full flex justify-center items-center py-2">
             <a
               href="https://www.zyg.ai/"

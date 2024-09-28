@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -14,28 +14,26 @@
   <script type="module" src="/src/embed.ts"></script>
   <script>
     window.addEventListener("DOMContentLoaded", () => {
-      initZygWidgetScript(
-        {
-          baseUrl: "http://localhost:5173",
-          apiUrl: "http://localhost:8000",
-          widgetId: "wdcr51aoctidudvsmjeop0",
-          customer: {
-            traits: {
-              name: "James Doe",
-            },
+      initZygWidgetScript({
+        baseUrl: "http://localhost:5173",
+        apiUrl: "http://localhost:8000",
+        widgetId: "wdcr51aoctidudvsmjeop0",
+        customer: {
+          traits: {
+            name: "James Doe",
           },
-          tabs: ["home", "conversations"],
-          defaultTab: "home",
-          homeLinks: [
-            {
-              id: 1,
-              title: "Book a Demo",
-              href: "https://www.zyg.ai/",
-              previewText: "Book a demo with our team",
-            },
-          ],
-        }
-      );
+        },
+        tabs: ["home", "conversations"],
+        defaultTab: "home",
+        homeLinks: [
+          {
+            id: 1,
+            title: "Book a Demo",
+            href: "https://www.zyg.ai/",
+            previewText: "Book a demo with our team",
+          },
+        ],
+      });
     });
   </script>
   <script>
