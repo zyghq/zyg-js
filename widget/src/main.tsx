@@ -1,7 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
+import {
+  createRouter,
+  RouterProvider,
+  createMemoryHistory,
+} from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
 import { CustomerProvider } from "@/components/providers";
+
+const memoryHistory = createMemoryHistory({
+  initialEntries: ["/"], // Pass your initial url
+});
 
 import "./index.css";
 
@@ -20,6 +28,7 @@ const router = createRouter({
   // This will ensure that the loader is always called when the route is preloaded or visited
   defaultPreloadStaleTime: 0,
   routeTree,
+  history: memoryHistory,
 });
 
 // Register the router instance for type safety

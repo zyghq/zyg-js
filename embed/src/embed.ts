@@ -201,8 +201,8 @@ export function initZygWidgetScript(initConfig: InitConfig) {
     var isHidden = !0;
     var pageWidth = window.innerWidth;
 
-    const baseUrl = initConfig.baseUrl || "http://localhost:5173";
-    const apiUrl = initConfig.apiUrl || "http://localhost:8080";
+    const baseUrl = initConfig.baseUrl || "http://localhost:5173"; // base url for the iframe
+    const apiUrl = initConfig.apiUrl || "http://localhost:8080"; // backend api url for the widget
 
     function fetchWidgetConfig(widgetId: string): Promise<WidgetConfig> {
       return fetch(`${apiUrl}/widgets/${widgetId}/config/`).then((res) =>
@@ -432,12 +432,6 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           });
       });
     }
-
-    // state
-    // let widgetId: string;
-    // let sessionId: string;
-    // let customer: Customer;
-    // let layout: WidgetLayout;
 
     var widgetId: string;
     var sessionId: string;
