@@ -1,6 +1,11 @@
 const IS_SERVER = typeof window === "undefined";
 const ENV = window.ZygEnv || "production";
 
+const DEFAULT_BASE_URL =
+  import.meta.env.VITE_WIDGET_BASE_URL || "http://localhost:3005"; // base url for the iframe
+const DEFAULT_API_URL =
+  import.meta.env.VITE_ZYG_XAPI_URL || "http://localhost:8000"; // backend api url for the widget
+
 const logger = (() => {
   if (ENV === "development") {
     return console.log.bind(console);
@@ -201,8 +206,8 @@ export function initZygWidgetScript(initConfig: InitConfig) {
     var isHidden = !0;
     var pageWidth = window.innerWidth;
 
-    const baseUrl = initConfig.baseUrl || "http://localhost:5173"; // base url for the iframe
-    const apiUrl = initConfig.apiUrl || "http://localhost:8080"; // backend api url for the widget
+    const baseUrl = initConfig.baseUrl || DEFAULT_BASE_URL; // base url for the iframe
+    const apiUrl = initConfig.apiUrl || DEFAULT_API_URL; // backend api url for the widget
 
     function fetchWidgetConfig(widgetId: string): Promise<WidgetConfig> {
       return fetch(`${apiUrl}/widgets/${widgetId}/config/`).then((res) =>

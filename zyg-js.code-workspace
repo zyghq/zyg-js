@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "zyg-js"
+    },
+    {
+      "path": "embed",
+      "name": "embed"
+    },
+    {
+      "path": "widget",
+      "name": "widget"
+    }
+  ]
+}

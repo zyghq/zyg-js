@@ -6,23 +6,31 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zyg Widget Demo</title>
+  <style>
+    .center {
+      text-align: center;
+    }
+
+    .pull-down {
+      margin-top: 42px;
+    }
+  </style>
 </head>
 
 <body>
-  <h1>FooBar Software</h1>
+  <h1 class="center pull-down">Your SaaS</h1>
+  <h2 class="center">Deserves Great Support.</h2>
   <div id="app"></div>
   <script type="module" src="/src/embed.ts"></script>
   <script>
     window.addEventListener("DOMContentLoaded", () => {
       initZygWidgetScript({
-        baseUrl: "http://localhost:5173",
-        apiUrl: "http://localhost:8000",
         widgetId: "wdcr51aoctidudvsmjeop0",
-        customer: {
-          traits: {
-            name: "James Doe",
-          },
-        },
+        // customer: {
+        //   traits: {
+        //     name: "James Doe",
+        //   },
+        // },
         tabs: ["home", "conversations"],
         defaultTab: "home",
         homeLinks: [
