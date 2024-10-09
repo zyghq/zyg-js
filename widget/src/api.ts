@@ -9,8 +9,11 @@ interface SendMessageBody {
   message: string;
 }
 
-interface UpdateEmailBody {
+interface AddEmailBody {
   email: string;
+  name: string;
+  redirectHost?: string;
+  contextThreadId?: string;
 }
 
 // API creates a thread.
@@ -128,12 +131,11 @@ export async function sendThreadMessageAPI(
   }
 }
 
-// API updates the email of the end user.
-// Also validates the response schema, returns data and error.
-export async function updateEmailAPI(
+// API adds email profile for the customer.
+export async function addEmailProfileAPI(
   widgetId: string,
   jwt: string,
-  body: UpdateEmailBody
+  body: AddEmailBody
 ) {
   try {
     const response = await fetch(
@@ -150,7 +152,7 @@ export async function updateEmailAPI(
 
     if (!response.ok) {
       const { status, statusText } = response;
-      console.error(`Failed to update email. Status: ${status} ${statusText}`);
+      console.error(`Failed to add email profile: ${status} ${statusText}`);
       return {
         data: null,
         error: {

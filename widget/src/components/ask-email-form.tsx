@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/form";
 import { CustomerRefreshed } from "@/lib/customer";
 import { customerSchema } from "@/lib/customer";
-import { updateEmailAPI } from "@/api";
+import { addEmailProfileAPI } from "@/api";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -58,8 +58,9 @@ export function AskEmailForm({
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const { email } = values;
-    const { error, data } = await updateEmailAPI(widgetId, jwt, {
+    const { error, data } = await addEmailProfileAPI(widgetId, jwt, {
       email,
+      name: "",
     });
     if (error) {
       const { message } = error;
