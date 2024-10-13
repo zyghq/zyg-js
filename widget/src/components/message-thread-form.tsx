@@ -1,5 +1,3 @@
-"use client";
-
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { SendHorizonalIcon } from "lucide-react";
@@ -19,10 +17,6 @@ import { sendThreadMessageAPI } from "@/api";
 const formSchema = z.object({
   message: z.string().min(1, "Message is required"),
 });
-
-// type FormValues = {
-//   message: string;
-// };
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -76,11 +70,6 @@ export function MessageThreadForm({
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const { message } = values;
-    console.log("message", message);
-    console.log("widgetId", widgetId);
-    console.log("threadId", threadId);
-    console.log("jwt", jwt);
-    console.log("refetch", refetch);
     const { error } = await sendThreadMessageAPI(widgetId, threadId, jwt, {
       message,
     });

@@ -13,26 +13,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { NavigateFn } from "@tanstack/react-router";
-import { createThreadAPI, addEmailProfileAPI } from "@/api";
+import { createThreadAPI } from "@/api";
+import { UseMutationResult } from "@tanstack/react-query";
 
-const startThreadFormSchema = z.object({
+const threadWithIdentityFormSchema = z.object({
   message: z.string().min(2, {
     message: "Must be at least 2 characters",
   }),
-});
-
-type StartThreadFormValues = z.infer<typeof startThreadFormSchema>;
-
-const emailProfileFormSchema = z.object({
   email: z.string().email({ message: "Must be valid email address" }),
   name: z.string().min(3, {
     message: "Must be at least 3 characters",
   }),
-  redirectHost: z.string().optional(),
-  contextThreadId: z.string().optional(),
 });
 
-type EmailProfileFormValues = z.infer<typeof emailProfileFormSchema>;
+type ThreadFormWithIdentityValue = z.infer<typeof threadWithIdentityFormSchema>;
 
 function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   return (
@@ -52,70 +46,56 @@ export function StartThreadWithEmailProfileForm({
   widgetId,
   jwt,
   navigate,
+  customerRefresh,
 }: {
   widgetId: string;
   jwt: string;
   navigate: NavigateFn;
+  customerRefresh: UseMutationResult<object | null, Error, void, unknown>;
 }) {
-  const threadForm = useForm({
-    resolver: zodResolver(startThreadFormSchema),
+  const form = useForm({
+    resolver: zodResolver(threadWithIdentityFormSchema),
     defaultValues: {
       message: "",
-    },
-    mode: "onBlur",
-  });
-
-  const profileForm = useForm({
-    resolver: zodResolver(emailProfileFormSchema),
-    defaultValues: {
       email: "",
       name: "",
-      redirectHost: "",
-      contextThreadId: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
   });
 
-  const { formState: threadFormState } = threadForm;
-  const { isSubmitting: threadIsSubmitting, errors: threadErrors } =
-    threadFormState;
+  const { formState } = form;
+  const { isSubmitting, errors } = formState;
 
-  const { formState: profileFormState } = profileForm;
-  const { isSubmitting: profileIsSubmitting, errors: profileErrors } =
-    profileFormState;
-
-  const onThreadSubmit: SubmitHandler<StartThreadFormValues> = async (
+  const onThreadSubmit: SubmitHandler<ThreadFormWithIdentityValue> = async (
     values
   ) => {
-    const { message } = values;
-    const response = await createThreadAPI(widgetId, jwt, {
+    const { message, email, name } = values;
+    const body = {
       message,
-    });
+      email,
+      name,
+    };
+    const response = await createThreadAPI(widgetId, jwt, body);
     const { error, data } = response;
     if (error) {
       const { message } = error;
-      threadForm.setError("root.serverError", {
+      form.setError("root.serverError", {
         message: message || "Please try again later.",
       });
       return;
     }
     if (data) {
       const { threadId } = data;
-      profileForm.setValue("contextThreadId", threadId);
-      profileForm.handleSubmit(onEmailProfileSubmit)();
+      customerRefresh.mutate();
+      await navigate({
+        to: `/threads/$threadId`,
+        params: { threadId },
+      });
     } else {
-      threadForm.setError("root.serverError", {
+      form.setError("root.serverError", {
         message: "Something went wrong. Please try again later.",
       });
     }
-  };
-
-  const onEmailProfileSubmit: SubmitHandler<EmailProfileFormValues> = async (
-    values
-  ) => {
-    console.log("*** data for profile form ***", values);
-
-    //   await navigate({ to: `/threads/$threadId`, params: { threadId } });
   };
 
   const onEnterPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -128,17 +108,20 @@ export function StartThreadWithEmailProfileForm({
     }
   };
 
-  const isDisabled = threadIsSubmitting || profileIsSubmitting;
+  const isDisabled = isSubmitting;
 
   return (
     <div className="flex flex-col gap-2">
-      <Form {...profileForm}>
-        <form onSubmit={() => {}} className="flex flex-col gap-2">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onThreadSubmit)}
+          className="flex flex-col gap-2"
+        >
           <FormField
-            control={profileForm.control}
+            control={form.control}
             name="email"
             render={({ field }) => (
-              <FormItem className="space-y-2 w-full">
+              <FormItem className="w-full">
                 <FormControl>
                   <Input
                     autoFocus
@@ -151,40 +134,33 @@ export function StartThreadWithEmailProfileForm({
               </FormItem>
             )}
           />
-          {profileErrors.email && (
+          {errors.email && (
             <p className="text-xs text-red-500" role="alert">
-              {profileErrors.email?.message}
+              {errors.email?.message}
             </p>
           )}
           <FormField
-            control={profileForm.control}
+            control={form.control}
             name="name"
             render={({ field }) => (
-              <FormItem className="space-y-2 w-full">
+              <FormItem className="w-full">
                 <FormControl>
                   <Input placeholder="Name" title="Name" required {...field} />
                 </FormControl>
               </FormItem>
             )}
           />
-          {profileErrors.email && (
+          {errors.email && (
             <p className="text-xs text-red-500" role="alert">
-              {profileErrors.name?.message}
+              {errors.name?.message}
             </p>
           )}
-        </form>
-      </Form>
-      <Form {...threadForm}>
-        <form
-          onSubmit={threadForm.handleSubmit(onThreadSubmit)}
-          className="flex flex-col gap-2"
-        >
           <FormField
-            control={threadForm.control}
+            control={form.control}
             name="message"
             disabled={false}
             render={({ field }) => (
-              <FormItem className="space-y-2 w-full">
+              <FormItem className="w-full">
                 <FormControl>
                   <Textarea
                     className="resize-none"
@@ -198,24 +174,124 @@ export function StartThreadWithEmailProfileForm({
               </FormItem>
             )}
           />
-          {threadErrors.message && (
+          {errors.message && (
             <p className="text-xs text-red-500" role="alert">
-              {threadErrors.message?.message}
+              {errors.message?.message}
             </p>
           )}
           <SubmitButton isDisabled={isDisabled} />
         </form>
-        {threadErrors?.root?.serverError && (
+        {errors?.root?.serverError && (
           <FormMessage className="text-xs">
-            {threadErrors?.root?.serverError?.message}
-          </FormMessage>
-        )}
-        {profileErrors?.root?.serverError && (
-          <FormMessage className="text-xs">
-            {profileErrors?.root?.serverError?.message}
+            {errors?.root?.serverError?.message}
           </FormMessage>
         )}
       </Form>
     </div>
+  );
+}
+
+const startThreadFormSchema = z.object({
+  message: z.string().min(2, {
+    message: "Must be at least 2 characters",
+  }),
+});
+
+type StartThreadFormValues = z.infer<typeof startThreadFormSchema>;
+
+export function StartThreadForm({
+  widgetId,
+  jwt,
+  navigate,
+}: {
+  widgetId: string;
+  jwt: string;
+  navigate: NavigateFn;
+}) {
+  const form = useForm({
+    resolver: zodResolver(startThreadFormSchema),
+    defaultValues: {
+      message: "",
+    },
+    mode: "onChange",
+  });
+
+  const { formState } = form;
+  const { isSubmitting, errors } = formState;
+
+  const onEnterPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) {
+        form.requestSubmit();
+      }
+    }
+  };
+
+  const onSubmit: SubmitHandler<StartThreadFormValues> = async (values) => {
+    const { message } = values;
+    const response = await createThreadAPI(widgetId, jwt, {
+      message,
+    });
+    const { error, data } = response;
+    if (error) {
+      const { message } = error;
+      form.setError("root.serverError", {
+        message: message || "Please try again later.",
+      });
+      return;
+    }
+    if (data) {
+      const { threadId } = data;
+      await navigate({ to: `/threads/$threadId`, params: { threadId } });
+    } else {
+      form.setError("root.serverError", {
+        message: "Something went wrong. Please try again later.",
+      });
+    }
+  };
+
+  const isDisabled = isSubmitting;
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col gap-2"
+      >
+        <FormField
+          control={form.control}
+          name="message"
+          disabled={false}
+          render={({ field }) => (
+            <FormItem className="w-full">
+              <FormControl>
+                <Textarea
+                  className="resize-none"
+                  placeholder="Send us a message"
+                  title="Send us a message"
+                  required
+                  autoFocus
+                  {...field}
+                  onKeyDown={onEnterPress}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        {errors.message && (
+          <p className="text-xs text-red-500" role="alert">
+            {errors.message?.message}
+          </p>
+        )}
+        <SubmitButton isDisabled={isDisabled} />
+      </form>
+      {errors?.root?.serverError && (
+        <FormMessage className="text-xs">
+          {errors?.root?.serverError?.message}
+        </FormMessage>
+      )}
+    </Form>
   );
 }

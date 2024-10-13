@@ -1,6 +1,7 @@
 import * as React from "react";
 import { z } from "zod";
 import { WidgetLayout } from "@/lib/widget";
+import { UseMutationResult } from "@tanstack/react-query";
 
 // type KV = { [key: string]: string };
 
@@ -15,6 +16,8 @@ const customerSchemaObj = {
   customerId: z.string(),
   externalId: z.string().nullable(),
   email: z.string().nullable(),
+  isEmailVerified: z.boolean().default(false),
+  isEmailPrimary: z.boolean().default(false),
   phone: z.string().nullable(),
   name: z.string(),
   avatarUrl: z.string(),
@@ -22,7 +25,6 @@ const customerSchemaObj = {
   role: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  requireIdentities: z.array(z.string()),
 };
 
 export const customerSchema = z.object(customerSchemaObj);
@@ -63,25 +65,12 @@ export type AuthenticatedCustomer = z.infer<
   typeof authenticatedCustomerAuthSchema
 >;
 
-export interface CustomerRefreshed {
-  externalId: string | null;
-  email: string | null;
-  phone: string | null;
-  name: string;
-  avatarUrl: string;
-  isVerified: boolean;
-  role: string;
-  requireIdentities: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface CustomerContext {
   customer: AuthenticatedCustomer | null;
   widgetLayout: WidgetLayout;
   isLoading: boolean;
   hasError: boolean;
-  setUpdates: (updates: CustomerRefreshed) => void;
+  customerRefresh: UseMutationResult<object | null, Error, void, unknown>;
 }
 
 export const CustomerContext = React.createContext<CustomerContext | null>(

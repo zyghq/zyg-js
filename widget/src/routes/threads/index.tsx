@@ -2,8 +2,10 @@ import { useCustomer } from "@/lib/customer";
 import { createFileRoute } from "@tanstack/react-router";
 import { HomeButton } from "@/components/home-btn";
 import { CloseButton } from "@/components/close-btn";
-import { StartThreadForm } from "@/components/start-thread-form";
-import { StartThreadWithEmailProfileForm } from "@/components/forms";
+import {
+  StartThreadWithEmailProfileForm,
+  StartThreadForm,
+} from "@/components/forms";
 
 export const Route = createFileRoute("/threads/")({
   component: NewThread,
@@ -11,7 +13,7 @@ export const Route = createFileRoute("/threads/")({
 
 function NewThread() {
   const navigate = Route.useNavigate();
-  const { isLoading, hasError, customer } = useCustomer();
+  const { isLoading, hasError, customer, customerRefresh } = useCustomer();
   const widgetId = customer?.widgetId;
   const jwt = customer?.jwt;
 
@@ -65,59 +67,6 @@ function NewThread() {
     );
   }
 
-  // async function navvvv() {
-  //   console.log("navvvv");
-  //   const r = await navigate({
-  //     to: "/search",
-  //     params: { threadId: "asdfasdf" },
-  //   });
-  //   // const rr = router.navigate({
-  //   //   to: "/",
-  //   //   params: { threadId: "asdfasdf" },
-  //   // });
-  //   console.log("r", r);
-  //   // console.log("rr", rr);
-  // }
-
-  // return (
-  //   <div className="flex min-h-screen flex-col font-sans">
-  //     <div className="z-10 w-full justify-between">
-  //       <div className="flex items-center justify-start py-4 border-b px-4 gap-1">
-  //         <HomeButton />
-  //         <div>
-  //           <div className="flex flex-col">
-  //             <div className="font-semibold">Zyg Team</div>
-  //             <div className="text-xs text-muted-foreground">
-  //               Ask us anything, or share your feedback.
-  //             </div>
-  //           </div>
-  //         </div>
-  //         <div className="ml-auto">
-  //           <CloseButton />
-  //         </div>
-  //       </div>
-  //       <div className="fixed bottom-0 left-0 flex w-full flex-col bg-white">
-  //         <div className="flex flex-col px-4 pt-4">
-  // <StartThreadWithEmailProfileForm
-  //   widgetId={widgetId}
-  //   jwt={jwt}
-  //   navigate={navigate}
-  // />
-  //         </div>
-  //         <div className="w-full flex justify-center items-center py-2">
-  //           <a
-  //             href="https://www.zyg.ai/"
-  //             className="text-xs font-semibold text-muted-foreground"
-  //             target="_blank"
-  //           >
-  //             Powered by Zyg
-  //           </a>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </div>
-  // );
-
   return (
     <div className="flex min-h-screen flex-col font-sans">
       <div className="z-10 w-full justify-between">
@@ -137,11 +86,20 @@ function NewThread() {
         </div>
         <div className="fixed bottom-0 left-0 flex w-full flex-col bg-white">
           <div className="w-full px-4 py-4">
-            <StartThreadWithEmailProfileForm
-              widgetId={widgetId}
-              jwt={jwt}
-              navigate={navigate}
-            />
+            {customer.email ? (
+              <StartThreadForm
+                widgetId={widgetId}
+                jwt={jwt}
+                navigate={navigate}
+              />
+            ) : (
+              <StartThreadWithEmailProfileForm
+                widgetId={widgetId}
+                jwt={jwt}
+                navigate={navigate}
+                customerRefresh={customerRefresh}
+              />
+            )}
           </div>
           <div className="w-full border-t flex justify-center items-center py-2">
             <a

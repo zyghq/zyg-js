@@ -8,7 +8,6 @@ import {
   useMutation,
 } from "@tanstack/react-query";
 import {
-  CustomerRefreshed,
   authenticatedCustomerAuthSchema,
   CustomerContext,
   initWidgetResponseSchema,
@@ -17,6 +16,7 @@ import {
 } from "@/lib/customer";
 import { SdkInitResponse, WidgetLayout } from "@/lib/widget";
 import { useQuery } from "@tanstack/react-query";
+import { getMeAPI } from "@/api";
 
 const defaultWidgetLayout = {
   title: "Hey! How can we help",
@@ -50,7 +50,6 @@ export const ReactQueryClientProvider = ({
 async function initWidgetRequest(
   payload: SdkInitResponse
 ): Promise<InitWidgetResponse> {
-  console.log("*************** The Payload from embed.js", payload);
   const { widgetId, sessionId, ...rest } = payload;
   const { email, phone, externalId, customerHash, traits = null } = rest;
   // give what the API needs.
@@ -63,7 +62,6 @@ async function initWidgetRequest(
     traits,
   };
 
-  console.log("************** widgetId", widgetId);
   const response = await fetch(
     `http://localhost:8000/widgets/${widgetId}/init/`,
     {
@@ -113,7 +111,6 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
   // makes the request to initialize the widget for the provided customer.
   const initMutate = useMutation({
     mutationFn: async (payload: SdkInitResponse) => {
-      console.log("************** payload", payload);
       const response = await initWidgetRequest(payload);
       const { widgetId, sessionId } = payload;
       const customerContext = {
@@ -147,12 +144,32 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const setUpdates = (updates: CustomerRefreshed) => {
-    if (!customer) {
-      return;
-    }
-    setCustomer({ ...customer, ...updates });
-  };
+  const customerRefresh = useMutation({
+    mutationFn: async () => {
+      const jwt = customer?.jwt || "";
+      const widgetId = customer?.widgetId || "";
+      const response = await getMeAPI(widgetId, jwt);
+      const { error, data } = response;
+      if (error) {
+        const { message } = error;
+        console.error("Error fetching customer", message);
+        return null;
+      }
+      if (data) {
+        return {};
+      }
+      return null;
+    },
+    onSuccess: (data) => {
+      if (customer && data) {
+        const updates = { ...customer, ...data } as AuthenticatedCustomer;
+        setCustomer({ ...updates });
+      }
+    },
+    onError: (error, variables, context) => {
+      console.log("onError", error, variables, context);
+    },
+  });
 
   React.useEffect(() => {
     // TODO: have some kind of onMessageHandler with callback
@@ -193,7 +210,7 @@ export function CustomerProvider({ children }: { children: React.ReactNode }) {
     hasError,
     customer,
     widgetLayout,
-    setUpdates,
+    customerRefresh,
   };
 
   return (

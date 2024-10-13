@@ -7,7 +7,6 @@ import { MessageThreadForm } from "@/components/message-thread-form";
 import { Icons } from "@/components/icons";
 import { useCustomer } from "@/lib/customer";
 import { useQuery } from "@tanstack/react-query";
-import { AskEmailForm } from "@/components/ask-email-form";
 import { ThreadChatResponse } from "@/lib/thread";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -75,8 +74,7 @@ function Chat({ chat }: { chat: ThreadChatResponse }) {
 
 function ThreadChats() {
   const { threadId } = Route.useParams();
-  const { customer, hasError, isLoading, setUpdates } = useCustomer();
-  const requireIdentity = customer?.requireIdentities?.length ?? 0 > 0;
+  const { customer, hasError, isLoading } = useCustomer();
 
   const {
     data: chats,
@@ -191,12 +189,14 @@ function ThreadChats() {
     return newArr;
   };
 
-  const hasSentMessageWithoutIdentity =
-    chats.length > 0 && requireIdentity && customer;
+  // const hasSentMessageWithoutIdentity =
+  //   chats.length > 0 && requireIdentity && customer;
 
-  const chatsReversed = hasSentMessageWithoutIdentity
-    ? Array.from([chats[0]])
-    : reverse(chats);
+  // const chatsReversed = hasSentMessageWithoutIdentity
+  //   ? Array.from([chats[0]])
+  //   : reverse(chats);
+
+  const chatsReversed = reverse(chats);
 
   return (
     <div className="flex min-h-screen flex-col font-sans">
@@ -219,7 +219,7 @@ function ThreadChats() {
           <div className="flex flex-col px-4 pt-4">
             {customer && (
               <MessageThreadForm
-                disabled={!!hasSentMessageWithoutIdentity}
+                disabled={false}
                 widgetId={customer.widgetId}
                 threadId={threadId}
                 jwt={customer.jwt}
@@ -244,18 +244,6 @@ function ThreadChats() {
             {chatsReversed.map((chat) => (
               <Chat key={chat.chatId} chat={chat} />
             ))}
-            {hasSentMessageWithoutIdentity ? (
-              <div className="flex flex-col px-2">
-                <div className="text-sm max-w-xs font-semibold mb-1">
-                  Please provide your email address so we can reach you.
-                </div>
-                <AskEmailForm
-                  widgetId={customer.widgetId}
-                  jwt={customer.jwt}
-                  setUpdates={setUpdates}
-                />
-              </div>
-            ) : null}
             <div ref={bottomRef}></div>
           </div>
         </ScrollArea>

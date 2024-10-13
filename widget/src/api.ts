@@ -1,19 +1,16 @@
 import { z } from "zod";
 import { createThreadResponseSchema, CreateThreadResponse } from "./lib/thread";
+import { customerSchema, Customer } from "./lib/customer";
 
 interface CreateThreadBody {
   message: string;
+  email?: string | null;
+  name?: string | null;
+  redirectHost?: string | null;
 }
 
 interface SendMessageBody {
   message: string;
-}
-
-interface AddEmailBody {
-  email: string;
-  name: string;
-  redirectHost?: string;
-  contextThreadId?: string;
 }
 
 // API creates a thread.
@@ -21,7 +18,6 @@ interface AddEmailBody {
 export async function createThreadAPI(
   widgetId: string,
   jwt: string,
-
   body: CreateThreadBody
 ): Promise<{
   error: { message: string } | null;
@@ -131,22 +127,23 @@ export async function sendThreadMessageAPI(
   }
 }
 
-// API adds email profile for the customer.
-export async function addEmailProfileAPI(
+// Fetch widget customer.
+export async function getMeAPI(
   widgetId: string,
-  jwt: string,
-  body: AddEmailBody
-) {
+  jwt: string
+): Promise<{
+  error: { message: string } | null;
+  data: Customer | null;
+}> {
   try {
     const response = await fetch(
-      `${import.meta.env.VITE_ZYG_XAPI_URL}/widgets/${widgetId}/me/identities/`,
+      `${import.meta.env.VITE_ZYG_XAPI_URL}/widgets/${widgetId}/me/`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify(body),
       }
     );
 
@@ -161,10 +158,26 @@ export async function addEmailProfileAPI(
       };
     }
     const data = await response.json();
-    return {
-      error: null,
-      data,
-    };
+    try {
+      const parsed = customerSchema.parse(data);
+      return {
+        error: null,
+        data: parsed,
+      };
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        console.error(
+          "Failed response schema validation, update customerSchema"
+        );
+        console.error(err.message);
+      } else console.error(err);
+      return {
+        error: {
+          message: "Failed response schema validation",
+        },
+        data: null,
+      };
+    }
   } catch (err) {
     console.error("Something went wrong", err);
     return {
