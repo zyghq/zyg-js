@@ -5,11 +5,15 @@
       "name": "zyg-js"
     },
     {
-      "path": "embed",
+      "path": "packages/core",
+      "name": "core"
+    },
+    {
+      "path": "packages/embed",
       "name": "embed"
     },
     {
-      "path": "widget",
+      "path": "packages/widget",
       "name": "widget"
     }
   ]

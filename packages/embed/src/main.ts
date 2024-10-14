@@ -4,10 +4,6 @@ import { DEFAULT_OPTIONS } from "@zyg-js/core";
 
 const DEFAULT_BASE_URL =
   import.meta.env.VITE_WIDGET_BASE_URL || "http://localhost:3005"; // base url for the iframe
-const DEFAULT_API_URL =
-  import.meta.env.VITE_ZYG_XAPI_URL || "http://localhost:8000"; // backend api url for the widget
-
-console.log("DEFAULT OPTIONS", DEFAULT_OPTIONS);
 
 const logger = (() => {
   if (ENV === "development") {
@@ -21,7 +17,7 @@ const logger = (() => {
 type KV = { [key: string]: string };
 
 // Represents the customer
-interface Customer {
+interface CustomerOptions {
   externalId?: string | null; // P1
   email?: string | null; // P2
   phone?: string | null; // P3
@@ -66,7 +62,7 @@ interface WidgetConfig {
 // Make sure to keep it simple and easy to understand.
 interface InitConfig {
   widgetId: string; // required
-  customer?: Customer;
+  customer?: CustomerOptions;
   title?: string;
   ctaSearchButtonText?: string;
   ctaMessageButtonText?: string;
@@ -79,7 +75,7 @@ interface InitConfig {
   headerColor?: string;
   profilePicture?: string;
   iconColor?: string;
-  baseUrl?: string; // TODO: deprecate this
+  baseUrl?: string; // iframe src url.
   apiUrl?: string;
 }
 
@@ -167,16 +163,16 @@ function generateUUID(): string {
   });
 }
 
-const DEFAULT_CUSTOMER_PROPS = {
+const DEFAULT_CUSTOMER_OPTIONS = {
   externalId: null,
   email: null,
   phone: null,
   customerHash: null,
   isVerified: false,
   traits: {},
-} as Customer;
+} as CustomerOptions;
 
-const DEFAULT_CONFIG = {
+const DEFAULT_WIDGET_CONFIG = {
   domainsOnly: false,
   domains: null,
   bubblePosition: "right",
@@ -185,7 +181,7 @@ const DEFAULT_CONFIG = {
   iconColor: "#ffff",
 } as WidgetConfig;
 
-const DEFAULT_LAYOUT = {
+const DEFAULT_WIDGET_LAYOUT = {
   title: "Hey! How can we help?",
   ctaSearchButtonText: "Search for articles, help docs and more...",
   ctaMessageButtonText: "Send us a message",
@@ -198,19 +194,21 @@ const DEFAULT_LAYOUT = {
 type WidgetInitPayload = {
   widgetId: string | null;
   sessionId?: string | null;
-} & Customer;
+} & CustomerOptions;
 
 export function initZygWidgetScript(initConfig: InitConfig) {
   if (IS_SERVER) {
     return;
   }
   (function () {
-    var config: WidgetConfig = DEFAULT_CONFIG;
+    var config: WidgetConfig = DEFAULT_WIDGET_CONFIG;
     var isHidden = !0;
     var pageWidth = window.innerWidth;
 
     const baseUrl = initConfig.baseUrl || DEFAULT_BASE_URL; // base url for the iframe
-    const apiUrl = initConfig.apiUrl || DEFAULT_API_URL; // backend api url for the widget
+    const apiUrl = initConfig.apiUrl || DEFAULT_OPTIONS.apiUrl; // backend api url for the widget
+
+    console.log("API URL", apiUrl);
 
     function fetchWidgetConfig(widgetId: string): Promise<WidgetConfig> {
       return fetch(`${apiUrl}/widgets/${widgetId}/config/`).then((res) =>
@@ -443,7 +441,7 @@ export function initZygWidgetScript(initConfig: InitConfig) {
 
     var widgetId: string;
     var sessionId: string;
-    var customer: Customer;
+    var customer: CustomerOptions;
     var layout: WidgetLayout;
 
     const zyg = (initConfig: InitConfig): ZygSDKInstance => ({
@@ -517,7 +515,7 @@ export function initZygWidgetScript(initConfig: InitConfig) {
 
         // set customer
         customer = {
-          ...DEFAULT_CUSTOMER_PROPS,
+          ...DEFAULT_CUSTOMER_OPTIONS,
           externalId,
           email,
           phone,
@@ -526,15 +524,18 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           traits: traits,
         };
 
-        const title = initConfig.title || DEFAULT_LAYOUT.title;
+        const title = initConfig.title || DEFAULT_WIDGET_LAYOUT.title;
         const ctaSearchButtonText =
-          initConfig.ctaSearchButtonText || DEFAULT_LAYOUT.ctaSearchButtonText;
+          initConfig.ctaSearchButtonText ||
+          DEFAULT_WIDGET_LAYOUT.ctaSearchButtonText;
         const ctaMessageButtonText =
           initConfig.ctaMessageButtonText ||
-          DEFAULT_LAYOUT.ctaMessageButtonText;
-        const tabs = initConfig.tabs || DEFAULT_LAYOUT.tabs;
-        const defaultTab = initConfig.defaultTab || DEFAULT_LAYOUT.defaultTab;
-        const homeLinks = initConfig.homeLinks || DEFAULT_LAYOUT.homeLinks;
+          DEFAULT_WIDGET_LAYOUT.ctaMessageButtonText;
+        const tabs = initConfig.tabs || DEFAULT_WIDGET_LAYOUT.tabs;
+        const defaultTab =
+          initConfig.defaultTab || DEFAULT_WIDGET_LAYOUT.defaultTab;
+        const homeLinks =
+          initConfig.homeLinks || DEFAULT_WIDGET_LAYOUT.homeLinks;
 
         const homeLinksFormatted =
           (homeLinks &&
