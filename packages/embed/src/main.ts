@@ -1,10 +1,13 @@
 const IS_SERVER = typeof window === "undefined";
 const ENV = window.ZygEnv || "production";
+import { DEFAULT_OPTIONS } from "@zyg-js/core";
 
 const DEFAULT_BASE_URL =
   import.meta.env.VITE_WIDGET_BASE_URL || "http://localhost:3005"; // base url for the iframe
 const DEFAULT_API_URL =
   import.meta.env.VITE_ZYG_XAPI_URL || "http://localhost:8000"; // backend api url for the widget
+
+console.log("DEFAULT OPTIONS", DEFAULT_OPTIONS);
 
 const logger = (() => {
   if (ENV === "development") {
