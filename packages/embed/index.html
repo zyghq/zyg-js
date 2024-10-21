@@ -26,26 +26,28 @@
     window.addEventListener("DOMContentLoaded", () => {
       initZygWidgetScript({
         widgetId: "wdcr51aoctidudvsmjeop0",
-        // customer: {
-        //   traits: {
-        //     name: "James Doe",
-        //   },
-        // },
-        tabs: ["home", "conversations"],
-        defaultTab: "home",
-        homeLinks: [
-          {
-            id: 1,
-            title: "Book a Demo",
-            href: "https://www.zyg.ai/",
-            previewText: "Book a demo with our team",
-          },
-        ],
+        customer: {
+          name: "John Wick"
+        },
+        layout: {
+          title: "Hey! How can we help?",
+          team: "Zyg Support",
+          homeLinks: [
+            {
+              id: 1,
+              title: "Book a Demo",
+              description: "Get a quick demo of Zyg",
+              href: "https://zyg.ai/",
+              imageUrl: "https://picsum.photos/id/76/300/200",
+            },
+
+          ]
+        }
       });
     });
   </script>
   <script>
-    window.addEventListener("zyg:loaded", () => {
+    window.addEventListener("zyg:init", () => {
       console.log("zyg loaded");
       window.Zyg.on("ready", (data) => {
         console.log("ready", data);

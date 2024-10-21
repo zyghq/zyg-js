@@ -5,7 +5,7 @@ import {
   createMemoryHistory,
 } from "@tanstack/react-router";
 import ReactDOM from "react-dom/client";
-import { CustomerProvider } from "@/components/providers";
+import { WidgetStore, WidgetPostMessageProvider } from "@/components/providers";
 
 const memoryHistory = createMemoryHistory({
   initialEntries: ["/"], // Pass your initial url
@@ -44,9 +44,11 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
   root.render(
     <QueryClientProvider client={queryClient}>
-      <CustomerProvider>
-        <RouterProvider router={router} />
-      </CustomerProvider>
+      <WidgetStore>
+        <WidgetPostMessageProvider>
+          <RouterProvider router={router} />
+        </WidgetPostMessageProvider>
+      </WidgetStore>
     </QueryClientProvider>
   );
 }

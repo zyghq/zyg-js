@@ -9,7 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@zyg-js/core": "workspace:*"
+    "@zyg-js/core": "workspace:*",
+    "defaults": "^3.0.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "typescript": "^5.5.3",

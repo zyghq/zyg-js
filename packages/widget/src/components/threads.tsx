@@ -1,17 +1,15 @@
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ThreadResponseItem } from "@/lib/thread";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "@tanstack/react-router";
+import type { Thread } from "@zyg-js/core";
 
-function ThreadItem({ thread }: { thread: ThreadResponseItem }) {
+function ThreadItem({ thread }: { thread: Thread }) {
   const { customer, outboundMember } = thread;
-
   const memberName = outboundMember?.name || null;
   const memberId = outboundMember?.memberId || null;
   const hasMember = memberId && memberName;
   const customerId = customer.customerId;
-
   return (
     <Link
       to="/threads/$threadId"
@@ -60,11 +58,7 @@ function ThreadItem({ thread }: { thread: ThreadResponseItem }) {
   );
 }
 
-export default function Threads({
-  threads,
-}: {
-  threads: ThreadResponseItem[];
-}) {
+export function Threads({ threads }: { threads: Thread[] }) {
   return (
     <div className="flex flex-col gap-2">
       {threads.map((thread) => (

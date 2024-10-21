@@ -1,6 +1,9 @@
+import { z } from "zod";
+import defaults from "defaults";
+
 const IS_SERVER = typeof window === "undefined";
 const ENV = window.ZygEnv || "production";
-import { DEFAULT_OPTIONS } from "@zyg-js/core";
+import { DEFAULT_OPTIONS, widgetConfigSchema } from "@zyg-js/core";
 
 const DEFAULT_BASE_URL =
   import.meta.env.VITE_WIDGET_BASE_URL || "http://localhost:3005"; // base url for the iframe
@@ -13,43 +16,22 @@ const logger = (() => {
   }
 })();
 
-// Represents a key-value pair
-type KV = { [key: string]: string };
+// Represents kv data type.
+type KV = { [key: string]: string | any };
 
-// Represents the customer
-interface CustomerOptions {
-  externalId?: string | null; // P1
-  email?: string | null; // P2
-  phone?: string | null; // P3
-  customerHash?: string | null;
-  isVerified?: boolean;
-  traits?: KV;
-}
+// Represents widget configuration API.
+// This is also the input to the embed sdk.
+type WidgetConfig = z.infer<typeof widgetConfigSchema>;
 
-interface HomeLink {
-  id?: string;
-  title: string;
-  href: string;
-  previewText?: string;
-}
-
-// Represents the widget internal layout
-interface WidgetLayout {
-  title?: string;
-  ctaSearchButtonText?: string;
-  ctaMessageButtonText?: string;
-  tabs?: string[];
-  defaultTab?: string;
-  homeLinks?: HomeLink[];
-}
+type Customer = z.infer<typeof widgetConfigSchema.shape.customer>;
+type WidgetLayout = z.infer<typeof widgetConfigSchema.shape.layout>;
 
 type BubblePosition = "left" | "right";
 type Domains = string[] | null;
 type ProfilePicture = string | null;
 
-// Remote widget config as configured in workspace.
-// Merged with local config on init.
-interface WidgetConfig {
+// Represents widget sdk options.
+interface WidgetSdkOpts {
   domainsOnly: boolean; // only allow domains in domains array
   domains: Domains; // only allow domains in domains array
   bubblePosition: BubblePosition;
@@ -58,26 +40,42 @@ interface WidgetConfig {
   iconColor: string;
 }
 
-// Represents the public SDK interface.
-// Make sure to keep it simple and easy to understand.
-interface InitConfig {
-  widgetId: string; // required
-  customer?: CustomerOptions;
-  title?: string;
-  ctaSearchButtonText?: string;
-  ctaMessageButtonText?: string;
-  tabs?: string[];
-  defaultTab?: string;
-  homeLinks?: HomeLink[];
-  domainsOnly?: boolean;
-  domains?: string[];
-  bubblePosition?: BubblePosition;
-  headerColor?: string;
-  profilePicture?: string;
-  iconColor?: string;
-  baseUrl?: string; // iframe src url.
+// Represents widget sdk overrides.
+interface OverrideSdkAddOns {
+  baseUrl?: string;
   apiUrl?: string;
 }
+
+// Represents full widget configuration with sdk options.
+type WidgetConfigWithSdkOpts = WidgetConfig & WidgetSdkOpts & OverrideSdkAddOns;
+
+const customer = (options: KV) =>
+  defaults(options, {
+    email: undefined,
+    externalId: undefined,
+    customerHash: undefined,
+    name: undefined,
+    lastName: undefined,
+    firstName: undefined,
+  }) as Customer;
+
+const sdkOpts = (options: KV) =>
+  defaults(options, {
+    domainsOnly: false,
+    domains: null,
+    bubblePosition: "right",
+    headerColor: "#9370DB",
+    profilePicture: null,
+    iconColor: "#ffff",
+  }) as WidgetSdkOpts;
+
+const widgetLayout = (options: KV) =>
+  defaults(options, {
+    title: "Zyg Support",
+    team: "Zyg",
+    tabs: ["home", "conversations", "search"],
+    homeLinks: [],
+  }) as WidgetLayout;
 
 // Represents the SDK instance and API interface.
 interface ZygSDKInstance {
@@ -163,54 +161,20 @@ function generateUUID(): string {
   });
 }
 
-const DEFAULT_CUSTOMER_OPTIONS = {
-  externalId: null,
-  email: null,
-  phone: null,
-  customerHash: null,
-  isVerified: false,
-  traits: {},
-} as CustomerOptions;
-
-const DEFAULT_WIDGET_CONFIG = {
-  domainsOnly: false,
-  domains: null,
-  bubblePosition: "right",
-  headerColor: "#9370DB",
-  profilePicture: null,
-  iconColor: "#ffff",
-} as WidgetConfig;
-
-const DEFAULT_WIDGET_LAYOUT = {
-  title: "Hey! How can we help?",
-  ctaSearchButtonText: "Search for articles, help docs and more...",
-  ctaMessageButtonText: "Send us a message",
-  tabs: ["home", "conversations"],
-  defaultTab: "home",
-  homeLinks: [],
-} as WidgetLayout;
-
-// Represents payload sent to iframe on init.
-type WidgetInitPayload = {
-  widgetId: string | null;
-  sessionId?: string | null;
-} & CustomerOptions;
-
-export function initZygWidgetScript(initConfig: InitConfig) {
+export function initZygWidgetScript(initConfig: WidgetConfigWithSdkOpts) {
   if (IS_SERVER) {
     return;
   }
   (function () {
-    var config: WidgetConfig = DEFAULT_WIDGET_CONFIG;
+    var widgetSdkOpts: WidgetSdkOpts;
     var isHidden = !0;
     var pageWidth = window.innerWidth;
 
     const baseUrl = initConfig.baseUrl || DEFAULT_BASE_URL; // base url for the iframe
     const apiUrl = initConfig.apiUrl || DEFAULT_OPTIONS.apiUrl; // backend api url for the widget
 
-    console.log("API URL", apiUrl);
-
-    function fetchWidgetConfig(widgetId: string): Promise<WidgetConfig> {
+    // fetch widget remote opts.
+    function fetchWidgetConfig(widgetId: string): Promise<WidgetSdkOpts> {
       return fetch(`${apiUrl}/widgets/${widgetId}/config/`).then((res) =>
         res.json()
       );
@@ -244,36 +208,15 @@ export function initZygWidgetScript(initConfig: InitConfig) {
       isHidden = !1;
     }
 
-    // handleCustomerPayload is triggered by post message when the iframe is ready.
-    // Inturn, sends the customer data payload to the iframe.
-    function handleCustomerPayload(payload: WidgetInitPayload): boolean {
-      logger("on handleCustomerPayload...");
-      const iframe: HTMLIFrameElement = document.getElementById(
-        "zyg-iframe"
-      ) as HTMLIFrameElement;
-
-      if (!iframe) throw new Error("zyg widget Iframe not configured!");
-      const message = {
-        type: "customer", // type of message being sent
-        data: JSON.stringify(payload), // data payload to be sent to iframe.
-      };
-      if (iframe.contentWindow) {
-        iframe.contentWindow.postMessage(JSON.stringify(message), baseUrl);
-        return true;
-      }
-      throw new Error("zyg widget Iframe not configured!");
-    }
-
-    // handleWidgetLayoutPayload is triggered by post message when the iframe is ready.
+    // handleWidgetConfig is triggered by post message when the iframe is ready.
     // Inturn, sends the widget layout payload to the iframe.
-    function handleWidgetLayoutPayload(payload: WidgetLayout): boolean {
-      logger("on handleWidgetLayoutPayload...");
+    function handleWidgetConfig(payload: WidgetConfig): boolean {
       const iframe: HTMLIFrameElement = document.getElementById(
         "zyg-iframe"
       ) as HTMLIFrameElement;
-      if (!iframe) throw new Error("zyg widget Iframe not configured!");
+      if (!iframe) throw new Error("zyg widget Iframe not configured yet!");
       const message = {
-        type: "layout", // type of message being sent
+        type: "config", // type of message being sent
         data: JSON.stringify(payload), // data payload to be sent to iframe.
       };
 
@@ -288,7 +231,6 @@ export function initZygWidgetScript(initConfig: InitConfig) {
     // when the iframe has received the customer data and acknowledges.
     // Inturn, sends the `start` message to the iframe.
     function handleAcknowledge(): boolean {
-      logger("on handleAcknowledge...");
       const iframe: HTMLIFrameElement = document.getElementById(
         "zyg-iframe"
       ) as HTMLIFrameElement;
@@ -321,7 +263,7 @@ export function initZygWidgetScript(initConfig: InitConfig) {
 
       // Determine bubble position (left or right)
       const positionStyles =
-        config.bubblePosition === "right"
+        widgetSdkOpts.bubblePosition === "right"
           ? "right: 16px; left: unset; transform-origin: right bottom;"
           : "left: 16px; right: unset; transform-origin: left bottom;";
 
@@ -332,30 +274,23 @@ export function initZygWidgetScript(initConfig: InitConfig) {
 
       // Apply final styles to the element
       t.style.cssText =
-        "box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; overflow: hidden !important; border: none !important; display: block !important; z-index: 2147483645 !important; border-radius: 0.75rem; bottom: 96px; transition: scale 200ms ease-out 0ms, opacity 200ms ease-out 0ms; position: fixed !important;" +
+        "box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, " +
+        "rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; " +
+        "overflow: hidden !important; " +
+        "border: none !important; " +
+        "display: block !important; " +
+        "z-index: 2147483645 !important; " +
+        "border-radius: 0.75rem; " +
+        "bottom: 96px; " +
+        "transition: scale 200ms ease-out 0ms, opacity 200ms ease-out 0ms; " +
+        "position: fixed !important;" +
         positionStyles +
         sizeStyles +
         visibilityStyles;
-      //     e =
-      //       pageWidth > 768
-      //         ? "width: 448px; height: 72vh; max-height: 720px;"
-      //         : "width: 100%; height: 100%; max-height: 100%; min-height: 100%; left: 0px; right: 0px; bottom: 0px; top: 0px;",
-      //     i =
-      //       "right" === config.bubblePosition
-      //         ? "right: 16px; left: unset; transform-origin: right bottom;"
-      //         : "left: 16px; right: unset; transform-origin: left bottom;",
-      //     o = isHidden
-      //       ? "opacity: 0 !important; transform: scale(0) !important;"
-      //       : "opacity: 1 !important; transform: scale(1) !important;";
-      //   t.style.cssText =
-      //     "box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; overflow: hidden !important; border: none !important; display: block !important; z-index: 2147483645 !important; border-radius: 0.75rem; bottom: 96px; transition: scale 200ms ease-out 0ms, opacity 200ms ease-out 0ms; position: fixed !important;" +
-      //     i +
-      //     e +
-      //     o;
     }
 
     // createZygWidget creates the iframe widget
-    function createZygWidget(config: WidgetConfig) {
+    function createZygWidget(config: WidgetSdkOpts) {
       if (config.domainsOnly && config.domains) {
         const domains = config.domains;
         const d = window.location.hostname;
@@ -380,11 +315,22 @@ export function initZygWidgetScript(initConfig: InitConfig) {
             ? "right: 16px; left: unset; transform-origin: right bottom;"
             : "left: 16px; right: unset; transform-origin: left bottom;";
       frameContainer.style.cssText =
-        "position: fixed !important; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; overflow: hidden !important; opacity: 0 !important; border: none !important; display: none !important; z-index: 2147483645 !important; border-radius: 0.75rem; bottom: 96px; transition: scale 200ms ease-out 0ms, opacity 200ms ease-out 0ms; transform: scale(0) !important;" +
+        "position: fixed !important; " +
+        "box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, " +
+        "rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; " +
+        "overflow: hidden !important; " +
+        "opacity: 0 !important; " +
+        "border: none !important; " +
+        "display: none !important; " +
+        "z-index: 2147483645 !important; " +
+        "border-radius: 0.75rem; " +
+        "bottom: 96px; " +
+        "transition: scale 200ms ease-out 0ms, opacity 200ms ease-out 0ms; " +
+        "transform: scale(0) !important;" +
         bbp +
         fcs;
 
-      // create the iframe
+      // create the iframe container.
       var iframe = document.createElement("iframe");
       iframe.setAttribute("id", "zyg-iframe"),
         iframe.setAttribute("title", "Zyg Widget"),
@@ -439,12 +385,9 @@ export function initZygWidgetScript(initConfig: InitConfig) {
       });
     }
 
-    var widgetId: string;
-    var sessionId: string;
-    var customer: CustomerOptions;
-    var layout: WidgetLayout;
+    var widgetConfig: WidgetConfig;
 
-    const zyg = (initConfig: InitConfig): ZygSDKInstance => ({
+    const zyg = (initConfig: WidgetConfigWithSdkOpts): ZygSDKInstance => ({
       _eventTarget: new EventTarget(),
       _triggerEvent(eventName: string, data: any) {
         const event = new CustomEvent(eventName, { detail: data });
@@ -457,7 +400,7 @@ export function initZygWidgetScript(initConfig: InitConfig) {
         this._eventTarget.removeEventListener(eventName, callback);
       },
       onMessageHandler(evt: MessageEvent) {
-        logger("onMessageHandler...");
+        logger("ifc received message event...");
         logger("evt origin:", evt.origin);
         logger("evt source", evt.source);
         logger("evt data", evt.data);
@@ -470,14 +413,8 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           this._triggerEvent("error", evt.data); // trigger error event.
         }
         if (evt.data === "ifc:ready") {
-          console.log("got ifc:ready.....");
-          console.log("this layout ....", layout);
-          handleWidgetLayoutPayload({ ...layout }); // pass widget layout on iframe ready.
-          handleCustomerPayload({
-            widgetId: widgetId,
-            sessionId: sessionId,
-            ...customer,
-          }); // pass customer on iframe ready
+          logger("iframe ready...");
+          handleWidgetConfig(widgetConfig);
         }
         if (evt.data === "ifc:ack") {
           handleAcknowledge(); // `start` customer is authenticated.
@@ -489,119 +426,78 @@ export function initZygWidgetScript(initConfig: InitConfig) {
           throw new Error("Invalid configuration. widgetId is required.");
         }
 
-        // set widgetId
-        widgetId = initConfig.widgetId;
-
-        const externalId = initConfig.customer?.externalId || null;
-        const email = initConfig.customer?.email || null;
-        const phone = initConfig.customer?.phone || null;
+        const externalId = initConfig?.customer?.externalId || null;
+        const email = initConfig?.customer?.email || null;
 
         const customerHash = initConfig.customer?.customerHash || null;
-        const isVerified = initConfig.customer?.isVerified || false;
-        const traits = initConfig.customer?.traits || {};
-
-        const hasCustomerIdentifier = !!externalId || !!email || !!phone;
+        const hasCustomerIdentifier = !!externalId || !!email;
 
         // Do some checks when setting up the widget.
         if (hasCustomerIdentifier && !customerHash) {
           throw new Error(
-            "Invalid configuration. `customerHash` is required when `customerExternalId`, `customerEmail`, `customerPhone` are provided."
+            "Invalid configuration. `customerHash` is required when `customerExternalId`, `customerEmail` are provided."
           );
         } else if (!hasCustomerIdentifier && customerHash) {
           throw new Error(
-            "Invalid configuration. `customerHash` is required when `customerExternalId`, `customerEmail`, `customerPhone` are not provided."
+            "Invalid configuration. `customerHash` is required when `customerExternalId`, `customerEmail` are not provided."
           );
         }
 
-        // set customer
-        customer = {
-          ...DEFAULT_CUSTOMER_OPTIONS,
-          externalId,
-          email,
-          phone,
-          customerHash: customerHash,
-          isVerified: isVerified,
-          traits: traits,
+        // with defaults
+        const customerOpts = customer(initConfig.customer || {});
+        const widgetLayoutOpts = widgetLayout(initConfig.layout || {});
+
+        widgetConfig = {
+          widgetId: initConfig.widgetId,
+          customer: customerOpts,
+          layout: widgetLayoutOpts,
         };
 
-        const title = initConfig.title || DEFAULT_WIDGET_LAYOUT.title;
-        const ctaSearchButtonText =
-          initConfig.ctaSearchButtonText ||
-          DEFAULT_WIDGET_LAYOUT.ctaSearchButtonText;
-        const ctaMessageButtonText =
-          initConfig.ctaMessageButtonText ||
-          DEFAULT_WIDGET_LAYOUT.ctaMessageButtonText;
-        const tabs = initConfig.tabs || DEFAULT_WIDGET_LAYOUT.tabs;
-        const defaultTab =
-          initConfig.defaultTab || DEFAULT_WIDGET_LAYOUT.defaultTab;
-        const homeLinks =
-          initConfig.homeLinks || DEFAULT_WIDGET_LAYOUT.homeLinks;
-
-        const homeLinksFormatted =
-          (homeLinks &&
-            homeLinks.map((link, index) => ({
-              id: index.toString(),
-              title: link.title,
-              href: link.href,
-              previewText: link.previewText,
-            }))) ||
-          [];
-
-        // set layout
-        layout = {
-          title,
-          ctaSearchButtonText,
-          ctaMessageButtonText,
-          tabs,
-          defaultTab,
-          homeLinks: homeLinksFormatted,
-        };
-
-        fetchWidgetConfig(widgetId)
+        fetchWidgetConfig(initConfig.widgetId)
           .then((c) => {
             logger("fetched widget config", c);
-            const merged = { ...config, ...c };
-            config = merged;
+            widgetSdkOpts = sdkOpts(c) as WidgetSdkOpts;
           })
           .then(() => {
             logger("configure widget session...");
             // Check if the `customerHash` is provided.
             // If so, we don't need to generate a sessionId.
             // We will use the customerHash to identify the customer.
-            if (customer.customerHash) {
+            if (customerHash) {
               return Promise.resolve();
             }
 
-            if (!widgetId) {
-              throw new Error("widgetId is not configured!");
-            }
-
             // check if existing sessionId is already stored.
-            const [existingSession, getErr] = getLocalStorage(widgetId);
+            const [existingSession, getErr] = getLocalStorage(
+              initConfig.widgetId
+            );
             if (getErr) {
               console.error("Error checking widget session from store", getErr);
             }
             // if sessionId is already stored, use it.
             if (existingSession) {
-              sessionId = existingSession;
+              widgetConfig.sessionId = existingSession;
               return Promise.resolve();
             }
             // generate a new sessionId, works if there was also an error
             // when trying to get the sessionId from localStorage.
             const newSessionId = generateUUID();
-            const [isSet, setErr] = setLocalStorage(widgetId, newSessionId);
+            const [isSet, setErr] = setLocalStorage(
+              initConfig.widgetId,
+              newSessionId
+            );
             if (setErr) {
               console.error("Error storing widget session", setErr);
               return Promise.reject(setErr);
             }
             if (isSet) {
-              sessionId = newSessionId;
+              widgetConfig.sessionId = newSessionId;
             }
             return Promise.resolve();
           })
           .then(() => {
             logger("create iframe widget...");
-            createZygWidget(config),
+            createZygWidget(widgetSdkOpts),
               window.addEventListener(
                 "message",
                 this.onMessageHandler.bind(this)
@@ -616,9 +512,9 @@ export function initZygWidgetScript(initConfig: InitConfig) {
     const z = zyg(initConfig);
     z.init();
     window["Zyg"] = z;
-    // dispatch event to notify that the sdk is loaded,
+    // dispatch event to notify that the zyg sdk is initialized.
     // globally accessible
-    window.dispatchEvent(new Event("zyg:loaded"));
+    window.dispatchEvent(new Event("zyg:init"));
   })();
 }
 

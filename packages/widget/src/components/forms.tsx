@@ -13,10 +13,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { NavigateFn } from "@tanstack/react-router";
-import { createThreadAPI } from "@/api";
-import { UseMutationResult } from "@tanstack/react-query";
+import { createThreadAPI, sendThreadMessageAPI } from "@zyg-js/core";
 
-const threadWithIdentityFormSchema = z.object({
+const threadWithProfileFormSchema = z.object({
   message: z.string().min(2, {
     message: "Must be at least 2 characters",
   }),
@@ -26,7 +25,7 @@ const threadWithIdentityFormSchema = z.object({
   }),
 });
 
-type ThreadFormWithIdentityValue = z.infer<typeof threadWithIdentityFormSchema>;
+type ThreadFormWithProfileValue = z.infer<typeof threadWithProfileFormSchema>;
 
 function SubmitButton({ isDisabled }: { isDisabled: boolean }) {
   return (
@@ -46,15 +45,13 @@ export function StartThreadWithEmailProfileForm({
   widgetId,
   jwt,
   navigate,
-  customerRefresh,
 }: {
   widgetId: string;
   jwt: string;
   navigate: NavigateFn;
-  customerRefresh: UseMutationResult<object | null, Error, void, unknown>;
 }) {
   const form = useForm({
-    resolver: zodResolver(threadWithIdentityFormSchema),
+    resolver: zodResolver(threadWithProfileFormSchema),
     defaultValues: {
       message: "",
       email: "",
@@ -66,7 +63,7 @@ export function StartThreadWithEmailProfileForm({
   const { formState } = form;
   const { isSubmitting, errors } = formState;
 
-  const onThreadSubmit: SubmitHandler<ThreadFormWithIdentityValue> = async (
+  const onThreadSubmit: SubmitHandler<ThreadFormWithProfileValue> = async (
     values
   ) => {
     const { message, email, name } = values;
@@ -86,7 +83,6 @@ export function StartThreadWithEmailProfileForm({
     }
     if (data) {
       const { threadId } = data;
-      customerRefresh.mutate();
       await navigate({
         to: `/threads/$threadId`,
         params: { threadId },
@@ -292,6 +288,95 @@ export function StartThreadForm({
           {errors?.root?.serverError?.message}
         </FormMessage>
       )}
+    </Form>
+  );
+}
+
+const messageSchema = z.object({
+  message: z.string().min(1, "Message is required"),
+});
+
+type MessageFormValue = z.infer<typeof messageSchema>;
+
+export function MessageThreadForm({
+  disabled,
+  widgetId,
+  threadId,
+  jwt,
+  refetch,
+}: {
+  disabled: boolean;
+  widgetId: string;
+  threadId: string;
+  jwt: string;
+  refetch: () => void;
+}) {
+  const form = useForm({
+    resolver: zodResolver(messageSchema),
+    defaultValues: {
+      message: "",
+    },
+  });
+
+  const { formState } = form;
+  const { isSubmitting, errors } = formState;
+
+  const onEnterPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      const form = e.currentTarget.form;
+      if (form) {
+        form.requestSubmit();
+      }
+    }
+  };
+
+  const onSubmit: SubmitHandler<MessageFormValue> = async (values) => {
+    const { message } = values;
+    const { error } = await sendThreadMessageAPI(widgetId, threadId, jwt, {
+      message,
+    });
+    if (error) {
+      const { message } = error;
+      form.setError("root.serverError", {
+        message: message || "Please try again later.",
+      });
+      return;
+    }
+    form.reset({ message: "" });
+    refetch();
+  };
+
+  return (
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col justify-between items-center gap-2"
+      >
+        <FormField
+          control={form.control}
+          name="message"
+          render={({ field }) => (
+            <FormItem className="space-y-2 w-full">
+              <FormControl>
+                <Textarea
+                  disabled={disabled}
+                  className="resize-none"
+                  placeholder="Send us a message"
+                  title="Send us a message"
+                  required
+                  {...field}
+                  onKeyDown={onEnterPress}
+                />
+              </FormControl>
+              {errors?.root?.serverError && (
+                <FormMessage>{errors?.root?.serverError?.message}</FormMessage>
+              )}
+            </FormItem>
+          )}
+        />
+        <SubmitButton isDisabled={isSubmitting || disabled} />
+      </form>
     </Form>
   );
 }

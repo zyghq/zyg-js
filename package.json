@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --filter embed dev && pnpm --filter widget dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

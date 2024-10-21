@@ -8,7 +8,3 @@ export const DEFAULT_OPTIONS = {
 } satisfies BaseOptions;
 
 export type { BaseOptions };
-
-export function fromConstant(name: string): string {
-  return `hello, ${name}!`;
-}

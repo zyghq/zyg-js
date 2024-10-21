@@ -1,259 +1,66 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
-import { MagnifyingGlassIcon } from "@radix-ui/react-icons";
-import { CloseButton } from "@/components/close-btn";
-import { SendMessageCTA } from "@/components/send-message-cta";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createFileRoute } from "@tanstack/react-router";
+import { CloseButton } from "@/components/widget-buttons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Icons } from "@/components/icons";
-import Threads from "@/components/threads";
-import { useCustomer } from "@/lib/customer";
-import { useQuery } from "@tanstack/react-query";
-import { threadResponseSchema, ThreadResponseItem } from "@/lib/thread";
-import { HomeLink } from "@/lib/widget";
-import { z } from "zod";
+import { useStore } from "zustand";
+import { useWidgetStore } from "@/components/providers";
+import { BottomNavigation } from "@/components/navbar";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
-function Home() {
-  const { isLoading, hasError, customer, widgetLayout } = useCustomer();
-  const { homeLinks = [] } = widgetLayout;
-
-  const {
-    data: threads,
-    isLoading: isLoadingThreads,
-    error: errorThreads,
-  } = useQuery({
-    queryKey: ["threads"],
-    queryFn: async () => {
-      const jwt = customer?.jwt;
-      if (!jwt) {
-        console.error("No JWT found");
-        return [];
-      }
-      const { widgetId } = customer;
-      const response = await fetch(
-        `http://localhost:8000/widgets/${widgetId}/threads/chat/`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Not Found");
-      }
-
-      const data = await response.json();
-      try {
-        const threads = data.map((item: unknown) => {
-          return threadResponseSchema.parse(item);
-        });
-        return threads;
-      } catch (err) {
-        if (err instanceof z.ZodError) {
-          console.error(err.message);
-        } else console.error(err);
-      }
-      return data as ThreadResponseItem[];
-    },
-    enabled: !!customer,
-    refetchOnWindowFocus: true,
-    refetchOnMount: "always",
-  });
-
-  const renderContent = () => {
-    if (widgetLayout.tabs.length > 1) {
-      const { defaultTab } = widgetLayout;
-      return (
-        <Tabs defaultValue={defaultTab} className="">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="home">Home</TabsTrigger>
-            <TabsTrigger value="conversations">Conversations</TabsTrigger>
-          </TabsList>
-          <TabsContent value="home">{renderHomeLinks(homeLinks)}</TabsContent>
-          <TabsContent value="conversations">
-            {renderThreads(threads)}
-          </TabsContent>
-        </Tabs>
-      );
-    }
-    if (widgetLayout.tabs.includes("home")) {
-      return renderHomeLinks(homeLinks);
-    }
-    if (widgetLayout.tabs.includes("conversations")) {
-      return renderThreads(threads);
-    }
-  };
-
-  const renderHomeLinks = (links: HomeLink[]) => {
-    return (
-      <div className="flex flex-col gap-2">
-        {links.map((feed) => (
-          <a
-            target="_blank"
-            href={feed.href}
-            key={feed.id}
-            className={cn(
-              "flex flex-col items-start gap-2 rounded-lg border px-3 py-3 text-left text-sm transition-all hover:bg-accent"
-            )}
-          >
-            <div className="flex w-full flex-col gap-1">
-              <div className="flex items-center">
-                <div className="flex items-center font-medium">
-                  {feed.title}
+export default function Home() {
+  const store = useWidgetStore();
+  const links = useStore(store, (state) => state.actions.getHomeLinks(state));
+  const title = useStore(store, (state) => state.actions.getWidgetTitle(state));
+  const team = useStore(store, (state) => state.actions.getWidgetTeam(state));
+  return (
+    <div>
+      <div className="flex w-full justify-between p-4">
+        <div className="flex flex-col">
+          <div className="text-md font-normal text-muted-foreground">
+            {team}
+          </div>
+          <div className="text-md font-semibold">{title}</div>
+        </div>
+        <CloseButton />
+      </div>
+      <ScrollArea className="h-[calc(100dvh-11rem)] px-4">
+        <div className="flex flex-col gap-2">
+          {links.map((link) => (
+            <a
+              target="_blank"
+              href={link.href}
+              key={link.id}
+              className="w-full max-w-md mx-auto flex flex-col gap-4 rounded-lg border"
+            >
+              <div className="rounded-lg overflow-hidden transition-all duration-300 hover:bg-accent">
+                {link.imageUrl && (
+                  <img
+                    src={link.imageUrl}
+                    alt="Product Image"
+                    width={300}
+                    height={200}
+                    className="w-full h-64 object-cover"
+                    style={{ aspectRatio: "300/200", objectFit: "cover" }}
+                  />
+                )}
+                <div className="p-4 space-y-1">
+                  <div className="flex items-center">
+                    <div className="flex items-center font-medium text-sm">
+                      {link.title}
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground text-sm line-clamp-6">
+                    {link.description}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="line-clamp-2 text-muted-foreground text-xs">
-              {feed.previewText}
-            </div>
-          </a>
-        ))}
-      </div>
-    );
-  };
-
-  const renderThreads = (threads: ThreadResponseItem[]) => {
-    if (errorThreads) {
-      return (
-        <div className="w-full flex items-center justify-center mt-24">
-          <div className="flex flex-col items-center justify-center text-muted-foreground">
-            <span className="text-lg">{`We're sorry, something went wrong.`}</span>
-            <span className="text-lg">Please try again later.</span>
-          </div>
-        </div>
-      );
-    }
-
-    if (isLoadingThreads) {
-      return (
-        <div className="w-full flex items-center justify-center">
-          <div className="flex flex-col items-center justify-center">
-            <svg
-              className="animate-spin h-5 w-5 text-muted-foreground"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              ></circle>
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          </div>
-        </div>
-      );
-    }
-
-    if (threads && threads.length > 0) {
-      return <Threads threads={threads} />;
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center space-y-4 mt-24">
-        <Icons.nothing className="w-40" />
-        <p className="text-center text-muted-foreground">
-          No conversations yet.
-        </p>
-      </div>
-    );
-  };
-
-  if (hasError) {
-    return (
-      <div className="absolute z-10 h-full w-full flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center text-muted-foreground">
-          <span className="text-lg">{`We're sorry, something went wrong.`}</span>
-          <span className="text-lg">Please try again later.</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="absolute z-10 h-full w-full flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center">
-          <svg
-            className="animate-spin h-5 w-5 text-muted-foreground"
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-screen flex-col font-sans">
-      <div className="z-10 w-full justify-between">
-        <div className="flex w-full justify-between items-center p-4 bg-white">
-          <div className="text-xl">{widgetLayout.title}</div>
-          <CloseButton />
-        </div>
-        <div className="fixed bottom-0 left-0 flex w-full border-t flex-col bg-white">
-          <div className="w-full px-4 py-4">
-            <SendMessageCTA ctaText={widgetLayout.ctaMessageButtonText} />
-          </div>
-          <div className="w-full border-t flex justify-center items-center py-2">
-            <a
-              href="https://www.zyg.ai/"
-              className="text-xs font-semibold text-muted-foreground"
-              target="_blank"
-            >
-              Powered by Zyg
             </a>
-          </div>
+          ))}
         </div>
-      </div>
-      <main>
-        <ScrollArea className="h-[calc(100dvh-12rem)]">
-          <div className="flex w-full flex-col mt-1 px-4 gap-2">
-            <Button
-              variant="secondary"
-              className="w-full text-muted-foreground flex font-normal items-center"
-              asChild
-            >
-              <Link to="/search">
-                <MagnifyingGlassIcon className="h-4 w-4 mr-1" />
-                {widgetLayout.ctaSearchButtonText}
-              </Link>
-            </Button>
-            {renderContent()}
-          </div>
-        </ScrollArea>
-      </main>
+      </ScrollArea>
+      <BottomNavigation />
     </div>
   );
 }

@@ -1,22 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import * as React from "react";
-import { HomeButton } from "@/components/home-btn";
-import { CloseButton } from "@/components/close-btn";
+import { CloseButton, ThreadListButton } from "@/components/widget-buttons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageThreadForm } from "@/components/message-thread-form";
 import { Icons } from "@/components/icons";
-import { useCustomer } from "@/lib/customer";
 import { useQuery } from "@tanstack/react-query";
-import { ThreadChatResponse } from "@/lib/thread";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getThreadMessagesAPI } from "@/api";
+import { getThreadMessagesAPI, ThreadChat } from "@zyg-js/core";
+import { useStore } from "zustand";
+import { useWidgetStore } from "@/components/providers";
+import { MessageThreadForm } from "@/components/forms";
 
 export const Route = createFileRoute("/threads/$threadId")({
   component: ThreadChats,
 });
 
-function Chat({ chat }: { chat: ThreadChatResponse }) {
+function Chat({ chat }: { chat: ThreadChat }) {
   const { createdAt } = chat;
   const when = formatDistanceToNow(new Date(createdAt), {
     addSuffix: true,
@@ -74,27 +73,19 @@ function Chat({ chat }: { chat: ThreadChatResponse }) {
 
 function ThreadChats() {
   const { threadId } = Route.useParams();
-  const { customer, hasError, isLoading } = useCustomer();
+  const store = useWidgetStore();
+  const team = useStore(store, (state) => state.actions.getWidgetTeam(state));
+  const widgetId = useStore(store, (state) => state.actions.getWidgetId(state));
+  const jwt = useStore(store, (state) => state.actions.getAuthToken(state));
 
   const {
     data: chats,
-    isLoading: isLoadingThread,
-    error: errorThread,
+    isLoading,
+    error,
     refetch,
   } = useQuery({
     queryKey: ["messages", threadId],
     queryFn: async () => {
-      const jwt = customer?.jwt;
-      if (!jwt) {
-        console.error("No JWT found");
-        return null;
-      }
-      const widgetId = customer?.widgetId;
-      if (!widgetId) {
-        console.error("No widgetId found");
-        return null;
-      }
-
       const { data, error } = await getThreadMessagesAPI(
         widgetId,
         threadId,
@@ -102,18 +93,12 @@ function ThreadChats() {
       );
 
       if (error) {
-        console.error("Error getting thread messages", error);
         throw new Error("Error getting thread messages");
       }
 
-      if (!data) {
-        console.error("No thread messages returned");
-        throw new Error("No thread messages returned");
-      }
-
-      return data as ThreadChatResponse[];
+      if (data) return data;
+      return null;
     },
-    enabled: !!customer,
   });
 
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -123,9 +108,9 @@ function ThreadChats() {
     }
   }, []);
 
-  if (hasError || errorThread) {
+  if (error) {
     return (
-      <div className="absolute z-10 h-full w-full flex items-center justify-center">
+      <div className="w-full flex items-center justify-center mt-24">
         <div className="flex flex-col items-center justify-center text-muted-foreground">
           <span className="text-lg">{`We're sorry, something went wrong.`}</span>
           <span className="text-lg">Please try again later.</span>
@@ -163,24 +148,18 @@ function ThreadChats() {
     );
   }
 
-  if (isLoadingThread) return null;
-
-  if (!customer) {
-    return null;
-  }
-
   if (!chats || !chats?.length) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-4 mt-24">
-        <Icons.nothing className="w-40" />
-        <p className="text-center text-muted-foreground">
-          Nothing to see here yet.
-        </p>
+      <div className="flex flex-col items-center justify-center">
+        <div className="mt-32 space-y-4">
+          <Icons.nothing className="w-40" />
+          <p className="text-center text-muted-foreground">No threads yet.</p>
+        </div>
       </div>
     );
   }
 
-  const reverse = function (arr: ThreadChatResponse[]) {
+  const reverse = function (arr: ThreadChat[]) {
     const newArr = [];
     let i = arr.length;
     while (i--) {
@@ -189,65 +168,95 @@ function ThreadChats() {
     return newArr;
   };
 
-  // const hasSentMessageWithoutIdentity =
-  //   chats.length > 0 && requireIdentity && customer;
-
-  // const chatsReversed = hasSentMessageWithoutIdentity
-  //   ? Array.from([chats[0]])
-  //   : reverse(chats);
-
   const chatsReversed = reverse(chats);
 
   return (
-    <div className="flex min-h-screen flex-col font-sans">
-      <div className="z-10 w-full justify-between">
-        <div className="flex items-center justify-start py-4 border-b px-4 gap-1">
-          <HomeButton />
-          <div>
-            <div className="flex flex-col">
-              <div className="font-semibold">Zyg Team</div>
-              <div className="text-xs text-muted-foreground">
-                Ask us anything, or share your feedback.
-              </div>
+    <div>
+      <div className="flex w-full justify-between p-4">
+        <div className="flex gap-1 items-center">
+          <ThreadListButton />
+          <div className="flex flex-col">
+            <div className="font-semibold">{team}</div>
+            <div className="text-xs text-muted-foreground">
+              Ask us anything, or share your feedback.
             </div>
           </div>
-          <div className="ml-auto">
-            <CloseButton />
-          </div>
         </div>
-        <div className="fixed bottom-0 left-0 flex w-full border-t flex-col bg-white">
-          <div className="flex flex-col px-4 pt-4">
-            {customer && (
-              <MessageThreadForm
-                disabled={false}
-                widgetId={customer.widgetId}
-                threadId={threadId}
-                jwt={customer.jwt}
-                refetch={refetch}
-              />
-            )}
-          </div>
-          <div className="w-full flex justify-center items-center py-2">
-            <a
-              href="https://www.zyg.ai/"
-              className="text-xs font-semibold text-muted-foreground"
-              target="_blank"
-            >
-              Powered by Zyg
-            </a>
-          </div>
+        <CloseButton />
+      </div>
+      <ScrollArea className="px-4 h-[calc(100dvh-14rem)]">
+        <div className="space-y-2">
+          {chatsReversed.map((chat) => (
+            <Chat key={chat.chatId} chat={chat} />
+          ))}
+          <div ref={bottomRef}></div>
+        </div>
+      </ScrollArea>
+      <div className="fixed bottom-0 left-0 flex w-full flex-col px-4">
+        <MessageThreadForm
+          disabled={false}
+          widgetId={widgetId}
+          threadId={threadId}
+          jwt={jwt}
+          refetch={refetch}
+        />
+        <div className="w-full flex justify-center items-center py-2">
+          <a
+            href="https://www.zyg.ai/"
+            className="text-xs font-semibold text-muted-foreground"
+            target="_blank"
+          >
+            Powered by Zyg
+          </a>
         </div>
       </div>
-      <main>
-        <ScrollArea className="p-4 h-[calc(100dvh-12rem)]">
-          <div className="space-y-2">
-            {chatsReversed.map((chat) => (
-              <Chat key={chat.chatId} chat={chat} />
-            ))}
-            <div ref={bottomRef}></div>
-          </div>
-        </ScrollArea>
-      </main>
     </div>
+
+    // <div className="flex min-h-screen flex-col font-sans">
+    //   <div className="z-10 w-full justify-between">
+    //     <div className="flex items-center justify-start py-4 border-b px-4 gap-1">
+    //       <ThreadListButton />
+    //       <div>
+    //         <div className="flex flex-col">
+    //           <div className="font-semibold">Zyg Team</div>
+    //           <div className="text-xs text-muted-foreground">
+    //             Ask us anything, or share your feedback.
+    //           </div>
+    //         </div>
+    //       </div>
+    //       <div className="ml-auto">
+    //         <CloseButton />
+    //       </div>
+    //     </div>
+    //     <div className="fixed bottom-0 left-0 flex w-full flex-col px-4">
+    //       <MessageThreadForm
+    //         disabled={false}
+    //         widgetId={widgetId}
+    //         threadId={threadId}
+    //         jwt={jwt}
+    //         refetch={refetch}
+    //       />
+    //       <div className="w-full flex justify-center items-center py-2">
+    //         <a
+    //           href="https://www.zyg.ai/"
+    //           className="text-xs font-semibold text-muted-foreground"
+    //           target="_blank"
+    //         >
+    //           Powered by Zyg
+    //         </a>
+    //       </div>
+    //     </div>
+    //   </div>
+    //   <main>
+    //     <ScrollArea className="p-4 h-[calc(100dvh-12rem)]">
+    //       <div className="space-y-2">
+    //         {chatsReversed.map((chat) => (
+    //           <Chat key={chat.chatId} chat={chat} />
+    //         ))}
+    //         <div ref={bottomRef}></div>
+    //       </div>
+    //     </ScrollArea>
+    //   </main>
+    // </div>
   );
 }

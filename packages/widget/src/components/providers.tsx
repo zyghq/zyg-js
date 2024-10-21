@@ -1,31 +1,15 @@
-"use client";
-
 import * as React from "react";
-import { z } from "zod";
 import {
   QueryClient,
   QueryClientProvider,
+  useQuery,
   useMutation,
 } from "@tanstack/react-query";
-import {
-  authenticatedCustomerAuthSchema,
-  CustomerContext,
-  initWidgetResponseSchema,
-  InitWidgetResponse,
-  AuthenticatedCustomer,
-} from "@/lib/customer";
-import { SdkInitResponse, WidgetLayout } from "@/lib/widget";
-import { useQuery } from "@tanstack/react-query";
-import { getMeAPI } from "@/api";
 
-const defaultWidgetLayout = {
-  title: "Hey! How can we help",
-  ctaSearchButtonText: "Search for articles, help docs and more...",
-  ctaMessageButtonText: "Send us a message",
-  tabs: ["home", "conversations"],
-  defaultTab: "home",
-  homeLinks: [],
-};
+import { buildWidgetStore, widgetValues } from "@/models/store";
+import { StoreApi, useStore } from "zustand";
+import type { WidgetConfig, Customer } from "@zyg-js/core";
+import { initWidgetRequest, widgetConfigSchema } from "@zyg-js/core";
 
 export const ReactQueryClientProvider = ({
   children,
@@ -47,175 +31,160 @@ export const ReactQueryClientProvider = ({
   );
 };
 
-async function initWidgetRequest(
-  payload: SdkInitResponse
-): Promise<InitWidgetResponse> {
-  const { widgetId, sessionId, ...rest } = payload;
-  const { email, phone, externalId, customerHash, traits = null } = rest;
-  // give what the API needs.
-  const body = {
-    sessionId,
-    customerExternalId: externalId,
-    customerEmail: email,
-    customerPhone: phone,
-    customerHash,
-    traits,
+const createZustandContext = <TInitial, TStore extends StoreApi<any>>(
+  getStore: (initial: TInitial) => TStore
+) => {
+  const Context = React.createContext(null as any as TStore);
+
+  const Provider = (props: {
+    children?: React.ReactNode;
+    initialValue: TInitial;
+  }) => {
+    const [store] = React.useState(() => getStore(props.initialValue));
+
+    return <Context.Provider value={store}>{props.children}</Context.Provider>;
   };
 
-  const response = await fetch(
-    `http://localhost:8000/widgets/${widgetId}/init/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    }
-  );
+  return {
+    Context,
+    Provider,
+    useContext: () => React.useContext(Context),
+  };
+};
 
-  if (!response.ok) {
-    throw new Error("Not Found");
-  }
+const widgetStore = createZustandContext(buildWidgetStore);
+export const WidgetStoreContext = widgetStore.Context;
+export const WidgetStoreProvider = widgetStore.Provider;
 
-  const responseData = await response.json();
-  try {
-    const parsedData = initWidgetResponseSchema.parse(responseData);
-    return {
-      ...parsedData,
-    };
-  } catch (error) {
-    console.error("Error parsing init widget response schema", error);
-    throw new Error("Invalid customer response data");
-  }
-}
-
-export function CustomerProvider({ children }: { children: React.ReactNode }) {
-  const [customer, setCustomer] = React.useState<AuthenticatedCustomer | null>(
-    null
-  );
-  const [widgetLayout, setWidgetLayout] =
-    React.useState<WidgetLayout>(defaultWidgetLayout);
-
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [hasError, setHasError] = React.useState(false);
-
-  // send post message to parent to indicate that the widget is ready.
+export function WidgetStore({ children }: { children: React.ReactNode }) {
   useQuery({
     queryKey: ["ifc:ready"],
     queryFn: async () => {
+      // notify host what widget is ready to receive messages.
       window.parent.postMessage("ifc:ready", "*");
       return true;
     },
   });
+  return (
+    <WidgetStoreProvider initialValue={widgetValues()}>
+      {children}
+    </WidgetStoreProvider>
+  );
+}
 
-  // makes the request to initialize the widget for the provided customer.
-  const initMutate = useMutation({
-    mutationFn: async (payload: SdkInitResponse) => {
-      const response = await initWidgetRequest(payload);
-      const { widgetId, sessionId } = payload;
-      const customerContext = {
-        ...response,
-        widgetId,
-        sessionId,
+export function useWidgetStore() {
+  const context = React.useContext(WidgetStoreContext);
+  if (!context) {
+    throw new Error(
+      "useWorkspaceStore must be used within a WorkspaceStoreProvider"
+    );
+  }
+  return context;
+}
+
+export function WidgetPostMessageProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const widgetStore = useWidgetStore();
+  const actions = useStore(widgetStore, (state) => state.actions);
+
+  const hasData = useStore(widgetStore, (state) => state.hasData);
+  const hasError = useStore(widgetStore, (state) => state.hasError);
+
+  const initWidgetMutation = useMutation({
+    mutationFn: async (payload: WidgetConfig) => {
+      const widgetId = payload.widgetId;
+      const customer = payload.customer;
+
+      const makeTraits = (): Record<string, string> => {
+        const { firstName, lastName, name } = customer || {};
+        const traits: Record<string, string> = {};
+        if (firstName) traits.firstName = firstName;
+        if (lastName) traits.lastName = lastName;
+        if (!firstName && !lastName && name) traits.name = name;
+        return traits;
+      };
+      // build the request body.
+      const body = {
+        sessionId: payload.sessionId,
+        customerExternalId: payload.customer?.externalId,
+        customerEmail: payload.customer?.email,
+        customerHash: payload.customer?.customerHash,
+        traits: makeTraits(),
       };
       try {
-        const parsedCustomerContext =
-          authenticatedCustomerAuthSchema.parse(customerContext);
-        return parsedCustomerContext;
+        const response = await initWidgetRequest(widgetId, body);
+        const customer: Customer = {
+          customerId: response.customerId,
+          email: response.email,
+          externalId: response.externalId,
+          name: response.name,
+          isEmailVerified: response.isEmailVerified,
+          isEmailPrimary: response.isEmailPrimary,
+          phone: response.phone,
+          avatarUrl: response.avatarUrl,
+          role: response.role,
+          createdAt: response.createdAt,
+          updatedAt: response.updatedAt,
+        };
+        const authInfo = {
+          jwt: response.jwt,
+          create: response.create,
+        };
+        actions.setCustomer(customer);
+        actions.setAuthToken(authInfo.jwt);
+        actions.setWidgetConfig(payload);
+        actions.setHasData(true);
+        actions.setHasError(false);
       } catch (err) {
-        if (err instanceof z.ZodError) {
-          console.error("error parsing built customer context", err);
-          throw new Error("error parsing built customer context");
-        }
-      }
-      return null;
-    },
-    onSuccess: (data) => {
-      setCustomer(data);
-      // send post message to parent to indicate that
-      // the widget has acknowledged the customer.
-      window.parent.postMessage("ifc:ack", "*");
-    },
-    onError: (error, variables, context) => {
-      console.log("onError", error, variables, context);
-      setHasError(true);
-      // TODO: handle different types of errors like:
-      // bad configuration, network errors, authentication, etc.
-    },
-  });
-
-  const customerRefresh = useMutation({
-    mutationFn: async () => {
-      const jwt = customer?.jwt || "";
-      const widgetId = customer?.widgetId || "";
-      const response = await getMeAPI(widgetId, jwt);
-      const { error, data } = response;
-      if (error) {
-        const { message } = error;
-        console.error("Error fetching customer", message);
-        return null;
-      }
-      if (data) {
-        return {};
-      }
-      return null;
-    },
-    onSuccess: (data) => {
-      if (customer && data) {
-        const updates = { ...customer, ...data } as AuthenticatedCustomer;
-        setCustomer({ ...updates });
+        // notify host for error.
+        window.parent.postMessage("ifc:error", "*");
+        actions.setHasError(true);
+        throw err;
       }
     },
-    onError: (error, variables, context) => {
-      console.log("onError", error, variables, context);
+    onSuccess: () => {
+      actions.setHasData(true);
+    },
+    onError: () => {
+      actions.setHasError(true);
     },
   });
 
   React.useEffect(() => {
-    // TODO: have some kind of onMessageHandler with callback
-    // that can be used to handle messages from the parent.
-    // makes it more extensible.
     const onMessageHandler = async (e: MessageEvent) => {
       try {
-        console.log("*********** ifc:onMessageHandler ***********");
         const data = JSON.parse(e.data);
-        if (data.type === "layout") {
-          const response = JSON.parse(data.data) as WidgetLayout;
-          setWidgetLayout(response);
-        }
-        if (data.type === "customer") {
-          console.log("*************** customer data iframe ***************");
-          console.log(data.data);
-          const response = JSON.parse(data.data) as SdkInitResponse;
-          initMutate.mutate({ ...response });
+        if (data.type === "config") {
+          const response = JSON.parse(data.data) as WidgetConfig;
+          const parsed = widgetConfigSchema.parse(response);
+          initWidgetMutation.mutate(parsed);
         }
         if (data.type === "start") {
-          setIsLoading(false);
+          console.log("done!");
         }
       } catch (err) {
         console.error("error processing evt message:", err);
-      } finally {
-        console.log("*********** ifc:onMessageHandler ***********");
+        actions.setHasError(true);
       }
     };
     window.addEventListener("message", onMessageHandler);
     return () => {
-      console.log("removing message listener");
+      console.log("unmount post message listener...");
       window.removeEventListener("message", onMessageHandler);
     };
-  }, [initMutate]);
+  }, [initWidgetMutation, actions]);
 
-  const value = {
-    isLoading,
-    hasError,
-    customer,
-    widgetLayout,
-    customerRefresh,
-  };
+  if (hasError) {
+    console.log("..... has error", hasError);
+    return <div>Error!</div>;
+  }
 
-  return (
-    <CustomerContext.Provider value={value}>
-      {children}
-    </CustomerContext.Provider>
-  );
+  if (hasData) {
+    return <>{children}</>;
+  }
+
+  return <div>Loading...</div>;
 }

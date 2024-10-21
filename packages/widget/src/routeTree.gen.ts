@@ -14,6 +14,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as SearchImport } from './routes/search'
 import { Route as IndexImport } from './routes/index'
 import { Route as ThreadsIndexImport } from './routes/threads/index'
+import { Route as ThreadsNewImport } from './routes/threads/new'
 import { Route as ThreadsThreadIdImport } from './routes/threads/$threadId'
 
 // Create/Update Routes
@@ -30,6 +31,11 @@ const IndexRoute = IndexImport.update({
 
 const ThreadsIndexRoute = ThreadsIndexImport.update({
   path: '/threads/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ThreadsNewRoute = ThreadsNewImport.update({
+  path: '/threads/new',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -63,6 +69,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ThreadsThreadIdImport
       parentRoute: typeof rootRoute
     }
+    '/threads/new': {
+      id: '/threads/new'
+      path: '/threads/new'
+      fullPath: '/threads/new'
+      preLoaderRoute: typeof ThreadsNewImport
+      parentRoute: typeof rootRoute
+    }
     '/threads/': {
       id: '/threads/'
       path: '/threads'
@@ -79,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/threads': typeof ThreadsIndexRoute
 }
 
@@ -86,6 +100,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/threads': typeof ThreadsIndexRoute
 }
 
@@ -94,15 +109,27 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/search': typeof SearchRoute
   '/threads/$threadId': typeof ThreadsThreadIdRoute
+  '/threads/new': typeof ThreadsNewRoute
   '/threads/': typeof ThreadsIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/search' | '/threads/$threadId' | '/threads'
+  fullPaths:
+    | '/'
+    | '/search'
+    | '/threads/$threadId'
+    | '/threads/new'
+    | '/threads'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/search' | '/threads/$threadId' | '/threads'
-  id: '__root__' | '/' | '/search' | '/threads/$threadId' | '/threads/'
+  to: '/' | '/search' | '/threads/$threadId' | '/threads/new' | '/threads'
+  id:
+    | '__root__'
+    | '/'
+    | '/search'
+    | '/threads/$threadId'
+    | '/threads/new'
+    | '/threads/'
   fileRoutesById: FileRoutesById
 }
 
@@ -110,6 +137,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SearchRoute: typeof SearchRoute
   ThreadsThreadIdRoute: typeof ThreadsThreadIdRoute
+  ThreadsNewRoute: typeof ThreadsNewRoute
   ThreadsIndexRoute: typeof ThreadsIndexRoute
 }
 
@@ -117,6 +145,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SearchRoute: SearchRoute,
   ThreadsThreadIdRoute: ThreadsThreadIdRoute,
+  ThreadsNewRoute: ThreadsNewRoute,
   ThreadsIndexRoute: ThreadsIndexRoute,
 }
 
@@ -135,6 +164,7 @@ export const routeTree = rootRoute
         "/",
         "/search",
         "/threads/$threadId",
+        "/threads/new",
         "/threads/"
       ]
     },
@@ -146,6 +176,9 @@ export const routeTree = rootRoute
     },
     "/threads/$threadId": {
       "filePath": "threads/$threadId.tsx"
+    },
+    "/threads/new": {
+      "filePath": "threads/new.tsx"
     },
     "/threads/": {
       "filePath": "threads/index.tsx"
