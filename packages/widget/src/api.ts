@@ -67,66 +67,7 @@
 // }
 
 // // Fetch widget customer.
-// export async function getMeAPI(
-//   widgetId: string,
-//   jwt: string
-// ): Promise<{
-//   error: { message: string } | null;
-//   data: Customer | null;
-// }> {
-//   try {
-//     const response = await fetch(
-//       `${import.meta.env.VITE_ZYG_XAPI_URL}/widgets/${widgetId}/me/`,
-//       {
-//         method: "GET",
-//         headers: {
-//           "Content-Type": "application/json",
-//           Authorization: `Bearer ${jwt}`,
-//         },
-//       }
-//     );
 
-//     if (!response.ok) {
-//       const { status, statusText } = response;
-//       console.error(`Failed to add email profile: ${status} ${statusText}`);
-//       return {
-//         data: null,
-//         error: {
-//           message: "Failed. Please try again later.",
-//         },
-//       };
-//     }
-//     const data = await response.json();
-//     try {
-//       const parsed = customerSchema.parse(data);
-//       return {
-//         error: null,
-//         data: parsed,
-//       };
-//     } catch (err) {
-//       if (err instanceof z.ZodError) {
-//         console.error(
-//           "Failed response schema validation, update customerSchema"
-//         );
-//         console.error(err.message);
-//       } else console.error(err);
-//       return {
-//         error: {
-//           message: "Failed response schema validation",
-//         },
-//         data: null,
-//       };
-//     }
-//   } catch (err) {
-//     console.error("Something went wrong", err);
-//     return {
-//       error: {
-//         message: "Something went wrong. Please try again later.",
-//       },
-//       data: null,
-//     };
-//   }
-// }
 
 // export async function getThreadMessagesAPI(
 //   widgetId: string,

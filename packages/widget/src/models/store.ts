@@ -19,6 +19,7 @@ export interface IWidgetActions {
   getWidgetCustomerEmail(state: WidgetStore): string | null;
   getWidgetCustomerExternalId(state: WidgetStore): string | null;
   getWidgetCustomerName(state: WidgetStore): string | null;
+  hasIdentity(state: WidgetStore): boolean;
 }
 
 // Represents widget store values.
@@ -148,6 +149,10 @@ export const buildWidgetStore = (initialState: IWidgetValues) => {
             return name;
           }
           return null;
+        },
+        hasIdentity: (state: WidgetStore): boolean => {
+          const { customer } = state;
+          return !!(customer && (customer.email || customer.externalId));
         },
       },
     }))

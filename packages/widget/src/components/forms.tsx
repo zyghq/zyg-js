@@ -13,7 +13,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { NavigateFn } from "@tanstack/react-router";
-import { createThreadAPI, sendThreadMessageAPI } from "@zyg-js/core";
+import {
+  createThreadAPI,
+  sendThreadMessageAPI,
+  getCustomerAPI,
+} from "@zyg-js/core";
+import { useMutation } from "@tanstack/react-query";
+import { useStore } from "zustand";
+import { useWidgetStore } from "@/components/providers";
 
 const threadWithProfileFormSchema = z.object({
   message: z.string().min(2, {
@@ -50,6 +57,8 @@ export function StartThreadWithEmailProfileForm({
   jwt: string;
   navigate: NavigateFn;
 }) {
+  const widgetStore = useWidgetStore();
+  const actions = useStore(widgetStore, (state) => state.actions);
   const form = useForm({
     resolver: zodResolver(threadWithProfileFormSchema),
     defaultValues: {
@@ -62,6 +71,40 @@ export function StartThreadWithEmailProfileForm({
 
   const { formState } = form;
   const { isSubmitting, errors } = formState;
+
+  const customerRefresh = useMutation({
+    mutationFn: async function () {
+      const { error, data } = await getCustomerAPI(widgetId, jwt);
+      if (error) {
+        console.error(error);
+        throw new Error("error fetching customer");
+      }
+      if (data) {
+        console.log(data);
+        return data;
+      }
+      return null;
+    },
+    onSuccess: (data) => {
+      if (data) {
+        const customer = {
+          customerId: data.customerId,
+          email: data.email,
+          externalId: data.externalId,
+          name: data.name,
+          isEmailVerified: data.isEmailVerified,
+          isEmailPrimary: data.isEmailPrimary,
+          phone: data.phone,
+          avatarUrl: data.avatarUrl,
+          role: data.role,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
+        };
+        actions.setCustomer(customer);
+      }
+    },
+    onError: () => {},
+  });
 
   const onThreadSubmit: SubmitHandler<ThreadFormWithProfileValue> = async (
     values
@@ -83,6 +126,7 @@ export function StartThreadWithEmailProfileForm({
     }
     if (data) {
       const { threadId } = data;
+      await customerRefresh.mutateAsync();
       await navigate({
         to: `/threads/$threadId`,
         params: { threadId },

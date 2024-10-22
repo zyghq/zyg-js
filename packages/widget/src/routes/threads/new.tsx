@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CloseButton, ThreadListButton } from "@/components/widget-buttons";
-import { StartThreadWithEmailProfileForm } from "@/components/forms";
+import {
+  StartThreadWithEmailProfileForm,
+  StartThreadForm,
+} from "@/components/forms";
 import { useWidgetStore } from "@/components/providers";
 import { useStore } from "zustand";
 
@@ -14,6 +17,10 @@ function NewThread() {
   const team = useStore(store, (state) => state.actions.getWidgetTeam(state));
   const jwt = useStore(store, (state) => state.actions.getAuthToken(state));
   const widgetId = useStore(store, (state) => state.actions.getWidgetId(state));
+  const hasIdentity = useStore(store, (state) =>
+    state.actions.hasIdentity(state)
+  );
+
   return (
     <div>
       <div className="flex w-full justify-between p-4 border-b">
@@ -31,11 +38,15 @@ function NewThread() {
         <CloseButton />
       </div>
       <div className="fixed bottom-0 left-0 flex w-full flex-col px-4 py-2 gap-2">
-        <StartThreadWithEmailProfileForm
-          widgetId={widgetId}
-          jwt={jwt}
-          navigate={navigate}
-        />
+        {hasIdentity ? (
+          <StartThreadForm widgetId={widgetId} jwt={jwt} navigate={navigate} />
+        ) : (
+          <StartThreadWithEmailProfileForm
+            widgetId={widgetId}
+            jwt={jwt}
+            navigate={navigate}
+          />
+        )}
         <div className="w-full border-t flex justify-center items-center">
           <a
             href="https://www.zyg.ai/"

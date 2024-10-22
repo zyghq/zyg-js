@@ -124,7 +124,7 @@ export const customerChatSchema = z.object(customerChatSchemaObj);
 // Combines `threadSchemaObj` and `customerChatSchemaObj`.
 export const newCustomerThreadSchemaObj = {
   ...threadSchemaObj,
-  ...customerChatSchemaObj,
+  chat: customerChatSchema,
 };
 
 // Represents the new customer thread schema.

@@ -4,8 +4,14 @@ import {
   newCustomerThreadSchema,
   threadSchema,
   threadChatSchema,
+  customerSchema,
 } from "./schemas";
-import type { NewCustomerThreadChat, Thread, ThreadChat } from "./types";
+import type {
+  NewCustomerThreadChat,
+  Thread,
+  ThreadChat,
+  Customer,
+} from "./types";
 import { z } from "zod";
 
 // Represents the request body for the widget init API.
@@ -285,6 +291,61 @@ export async function getThreadMessagesAPI(
       };
     } catch (err) {
       console.error("Error parsing thread chat response schema", err);
+      return {
+        error: {
+          message: "Failed response schema validation",
+        },
+        data: null,
+      };
+    }
+  } catch (err) {
+    console.error("Something went wrong", err);
+    return {
+      error: {
+        message: "Something went wrong. Please try again later.",
+      },
+      data: null,
+    };
+  }
+}
+
+export async function getCustomerAPI(
+  widgetId: string,
+  jwt: string
+): Promise<{
+  error: { message: string } | null;
+  data: Customer | null;
+}> {
+  try {
+    const response = await fetch(
+      `${DEFAULT_OPTIONS.apiUrl}/widgets/${widgetId}/me/`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const { status, statusText } = response;
+      console.error(`Failed to add email profile: ${status} ${statusText}`);
+      return {
+        data: null,
+        error: {
+          message: "Failed. Please try again later.",
+        },
+      };
+    }
+    const data = await response.json();
+    try {
+      const parsed = customerSchema.parse(data);
+      return {
+        error: null,
+        data: parsed,
+      };
+    } catch (err) {
       return {
         error: {
           message: "Failed response schema validation",

@@ -5,6 +5,7 @@ import {
   getThreadChatsAPI,
   sendThreadMessageAPI,
   getThreadMessagesAPI,
+  getCustomerAPI,
 } from "./apis";
 import {
   customerSchema,
@@ -41,6 +42,7 @@ export {
   getThreadChatsAPI,
   sendThreadMessageAPI,
   getThreadMessagesAPI,
+  getCustomerAPI,
 };
 
 // types.
